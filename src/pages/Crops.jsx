@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
+import { supabase } from '../lib/supabase';
 
 const CROP_TYPES = [
     { id: 'huerto', label: 'Huerto', icon: <Sprout />, color: 'text-green-600', bg: 'bg-green-50' },
@@ -29,10 +30,26 @@ const COMPANIONS = {
 
 const Crops = () => {
     const [activeTab, setActiveTab] = useState('huerto');
-    const [crops, setCrops] = useState(() => {
-        const saved = localStorage.getItem('finquina_crops_v2');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const [crops, setCrops] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCrops = async () => {
+            const { data, error } = await supabase
+                .from('crops')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                setCrops(data);
+            } else {
+                const saved = localStorage.getItem('finquina_crops_v2');
+                if (saved) setCrops(JSON.parse(saved));
+            }
+            setLoading(false);
+        };
+        fetchCrops();
+    }, []);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [formData, setFormData] = useState({
@@ -55,7 +72,14 @@ const Crops = () => {
     const [analyzingId, setAnalyzingId] = useState(null);
 
     useEffect(() => {
-        localStorage.setItem('finquina_crops_v2', JSON.stringify(crops));
+        try {
+            localStorage.setItem('finquina_crops_v2', JSON.stringify(crops));
+        } catch (e) {
+            console.error("Error saving to localStorage", e);
+            if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+                alert("¡Atención! La memoria del navegador está llena por las fotos. Borra algún cultivo antiguo para seguir guardando.");
+            }
+        }
     }, [crops]);
 
     const handleImageUpload = (id, e) => {
@@ -65,10 +89,9 @@ const Crops = () => {
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
-            img.onload = () => {
-                // Resize logic using Canvas
+            img.onload = async () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 800;
+                const MAX_WIDTH = 600;
                 let width = img.width;
                 let height = img.height;
 
@@ -82,12 +105,18 @@ const Crops = () => {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Compress to JPEG for space saving
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
 
+                // Optimistic UI update
                 setCrops(prevCrops => prevCrops.map(c =>
                     c.id === id ? { ...c, image: dataUrl, aiAnalysis: null } : c
                 ));
+
+                // Sync to Supabase
+                await supabase
+                    .from('crops')
+                    .update({ image: dataUrl, aiAnalysis: null })
+                    .eq('id', id);
             };
             img.src = event.target.result;
         };
@@ -98,36 +127,84 @@ const Crops = () => {
         setAnalyzingId(id);
 
         // Simulating IA Vision processing
-        setTimeout(() => {
+        setTimeout(async () => {
+            let updatedCrop = null;
+
             setCrops(prevCrops => prevCrops.map(c => {
                 if (c.id === id) {
                     const isFrutal = c.type === 'frutal';
-                    const diagnostics = isFrutal
-                        ? "Hojas con buen verdor. Se detecta inicio de brotación. Recomendación: Aplicar preventivo de cobre y revisar pulgón en brotes nuevos."
-                        : "Crecimiento vigoroso. Se observa ligera clorosis en hojas basales (falta de Nitrógeno). Recomendación: Abonar con humus de lombriz.";
 
-                    return {
+                    const plantedDate = new Date(c.plantedDate);
+                    let daysToHarvest = isFrutal ? 180 : 90;
+
+                    const nameLower = c.name.toLowerCase();
+                    if (nameLower.includes('tomate')) daysToHarvest = 80;
+                    else if (nameLower.includes('lechuga')) daysToHarvest = 45;
+                    else if (nameLower.includes('pimiento')) daysToHarvest = 100;
+                    else if (nameLower.includes('manzano')) daysToHarvest = 150;
+                    else if (nameLower.includes('pera')) daysToHarvest = 140;
+
+                    const estDate = new Date(plantedDate.getTime() + (daysToHarvest * 24 * 60 * 60 * 1000));
+                    const estDateStr = estDate.toISOString().split('T')[0];
+
+                    const diagnostics = isFrutal
+                        ? `Análisis de follaje: ÉXITO. Se observa un vigor del 92%. Basado en el estado de brotación y fecha de plantación, la IA estima la cosecha óptima para el ${estDateStr}. Recomendación: Revisar riego y aplicar abonado de floración.`
+                        : `Análisis de crecimiento: VIGOROSO. Se detecta ligera clorosis (falta de Nitrógeno). El desarrollo foliar sugiere una maduración en aproximadamente ${daysToHarvest - 15} días. Cosecha estimada por IA: ${estDateStr}.`;
+
+                    updatedCrop = {
                         ...c,
+                        harvestDate: estDateStr,
                         aiAnalysis: {
                             status: "Éxito",
                             diagnosis: diagnostics,
-                            action: isFrutal ? "Poda de limpieza y abonado" : "Abonado foliar orgánico",
-                            timestamp: new Date().toLocaleString()
+                            action: isFrutal ? "Poda y Abonado" : "Abonado Follaje",
+                            timestamp: new Date().toLocaleString(),
+                            estimatedHarvest: estDateStr
                         }
                     };
+                    return updatedCrop;
                 }
                 return c;
             }));
+
+            // Sync to Supabase
+            if (updatedCrop) {
+                await supabase
+                    .from('crops')
+                    .update({
+                        harvestDate: updatedCrop.harvestDate,
+                        aiAnalysis: updatedCrop.aiAnalysis
+                    })
+                    .eq('id', id);
+            }
+
             setAnalyzingId(null);
         }, 2500);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!formData.name) return;
-        const newCrop = { id: Date.now(), ...formData, image: null, aiAnalysis: null };
-        setCrops([newCrop, ...crops]);
+
+        const newCropData = {
+            ...formData,
+            image: null,
+            aiAnalysis: null,
+            created_at: new Date().toISOString()
+        };
+
+        const tempId = Date.now();
+        setCrops([{ id: tempId, ...newCropData }, ...crops]);
         setIsFormOpen(false);
         resetForm();
+
+        const { data, error } = await supabase
+            .from('crops')
+            .insert([newCropData])
+            .select();
+
+        if (!error && data) {
+            setCrops(prev => prev.map(c => c.id === tempId ? data[0] : c));
+        }
     };
 
     const resetForm = () => {
@@ -147,9 +224,10 @@ const Crops = () => {
         });
     };
 
-    const deleteCrop = (id) => {
+    const deleteCrop = async (id) => {
         if (window.confirm('¿Eliminar este registro permanentemente?')) {
             setCrops(crops.filter(c => c.id !== id));
+            await supabase.from('crops').delete().eq('id', id);
         }
     };
 
@@ -273,7 +351,7 @@ const Crops = () => {
                                 )}
 
                                 {/* Main Stats */}
-                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                <div className="grid grid-cols-2 gap-3 mb-3">
                                     <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
                                         <div className="flex items-center gap-1.5 text-earth-400">
                                             <Calendar size={12} />
@@ -292,6 +370,21 @@ const Crops = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {crop.harvestDate && (
+                                    <div className="bg-green-600 text-white rounded-2xl p-4 mb-4 shadow-lg shadow-green-100 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white/20 rounded-xl">
+                                                <Sprout size={20} className="text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Cosecha Estimada</p>
+                                                <p className="text-lg font-black font-outfit leading-none mt-0.5">{crop.harvestDate}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg uppercase">Por IA</div>
+                                    </div>
+                                )}
 
                                 {/* Companion / Pruning Footer */}
                                 <div className="flex items-center justify-between text-xs px-2">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { TrendingDown, Plus, DollarSign, X, Save, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 const CATEGORIES = [
     { name: 'Semillas', color: '#10b981' },
@@ -11,13 +12,26 @@ const CATEGORIES = [
 ];
 
 const Inventory = () => {
-    const [expenses, setExpenses] = useState(() => {
-        const saved = localStorage.getItem('finquina_expenses');
-        return saved ? JSON.parse(saved) : [
-            { id: 1, name: 'Semillas Tomate', category: 'Semillas', value: 45, date: '2026-01-18' },
-            { id: 2, name: 'Abono NPK', category: 'Fertilizante', value: 120, date: '2026-01-15' },
-        ];
-    });
+    const [expenses, setExpenses] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchExpenses = async () => {
+            const { data, error } = await supabase
+                .from('expenses')
+                .select('*')
+                .order('date', { ascending: false });
+
+            if (!error && data) {
+                setExpenses(data);
+            } else {
+                const saved = localStorage.getItem('finquina_expenses');
+                if (saved) setExpenses(JSON.parse(saved));
+            }
+            setLoading(false);
+        };
+        fetchExpenses();
+    }, []);
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [newExpense, setNewExpense] = useState({ name: '', category: 'Semillas', value: '', date: new Date().toISOString().split('T')[0] });
@@ -26,20 +40,34 @@ const Inventory = () => {
         localStorage.setItem('finquina_expenses', JSON.stringify(expenses));
     }, [expenses]);
 
-    const handleAddExpense = () => {
+    const handleAddExpense = async () => {
         if (!newExpense.name || !newExpense.value) return;
-        const expense = {
-            id: Date.now(),
-            ...newExpense,
-            value: parseFloat(newExpense.value)
+
+        const expenseData = {
+            name: newExpense.name,
+            category: newExpense.category,
+            value: parseFloat(newExpense.value),
+            date: newExpense.date
         };
-        setExpenses([expense, ...expenses]);
+
+        const tempId = Date.now();
+        setExpenses([{ id: tempId, ...expenseData }, ...expenses]);
         setIsFormOpen(false);
         setNewExpense({ name: '', category: 'Semillas', value: '', date: new Date().toISOString().split('T')[0] });
+
+        const { data, error } = await supabase
+            .from('expenses')
+            .insert([expenseData])
+            .select();
+
+        if (!error && data) {
+            setExpenses(prev => prev.map(e => e.id === tempId ? data[0] : t));
+        }
     };
 
-    const removeExpense = (id) => {
+    const removeExpense = async (id) => {
         setExpenses(expenses.filter(e => e.id !== id));
+        await supabase.from('expenses').delete().eq('id', id);
     };
 
     const totalExpense = expenses.reduce((acc, curr) => acc + curr.value, 0);

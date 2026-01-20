@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Trash2,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import VoiceInput from '../components/VoiceInput';
 import clsx from 'clsx';
+import { supabase } from '../lib/supabase';
 
 const CATEGORIES = [
     { id: 'mantenimiento', label: 'Mantenimiento', icon: <Settings size={14} />, color: 'bg-orange-100 text-orange-700' },
@@ -26,22 +27,37 @@ const CATEGORIES = [
 const FREQUENCIES = [
     { id: 'unica', label: 'Una sola vez' },
     { id: 'diaria', label: 'Diaria' },
-    { id: 'semanal', label: 'Semanal' },
-    { id: 'mensual', label: 'Mensual' },
+    { id: 'semanal', label: 'Semanales' },
+    { id: 'mensual', label: 'Mensuales' },
 ];
 
 const Tasks = () => {
-    // Load tasks from localStorage on initial render
-    const [tasks, setTasks] = useState(() => {
-        const saved = localStorage.getItem('finquina_tasks');
-        return saved ? JSON.parse(saved) : [
-            { id: 1, text: 'Comprar fertilizante para tomates', completed: false, category: 'inventario', frequency: 'unica', ai: false, section: 'Invernadero' },
-            { id: 2, text: 'Revisar bomba de agua', completed: true, category: 'mantenimiento', frequency: 'semanal', ai: true, section: 'Pozo' },
-        ];
-    });
+    const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // Save tasks to localStorage whenever they change
-    React.useEffect(() => {
+    // Initial fetch from Supabase
+    useEffect(() => {
+        const fetchTasks = async () => {
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                setTasks(data);
+            } else {
+                // Fallback to localStorage if Supabase fails or isn't set up
+                const saved = localStorage.getItem('finquina_tasks');
+                if (saved) setTasks(JSON.parse(saved));
+            }
+            setLoading(false);
+        };
+
+        fetchTasks();
+    }, []);
+
+    // Also keep localStorage updated as a backup
+    useEffect(() => {
         localStorage.setItem('finquina_tasks', JSON.stringify(tasks));
     }, [tasks]);
 
@@ -59,26 +75,64 @@ const Tasks = () => {
         setIsFormOpen(true);
     };
 
-    const handleAddTask = () => {
+    const handleAddTask = async () => {
         if (!newTaskData.text.trim()) return;
 
-        const task = {
-            id: Date.now(),
-            ...newTaskData,
-            completed: false
+        const newTask = {
+            text: newTaskData.text,
+            category: newTaskData.category,
+            frequency: newTaskData.frequency,
+            ai: newTaskData.ai,
+            section: newTaskData.section,
+            completed: false,
+            created_at: new Date().toISOString()
         };
 
-        setTasks([task, ...tasks]);
+        // UI update immediately
+        const tempId = Date.now();
+        setTasks([{ id: tempId, ...newTask }, ...tasks]);
         setNewTaskData({ text: '', category: 'otros', frequency: 'unica', ai: false, section: '' });
         setIsFormOpen(false);
+
+        // Sync to Supabase
+        const { data, error } = await supabase
+            .from('tasks')
+            .insert([newTask])
+            .select();
+
+        if (!error && data) {
+            // Replace temp id with real id from DB
+            setTasks(prev => prev.map(t => t.id === tempId ? data[0] : t));
+        }
     };
 
-    const toggleTask = (id) => {
-        setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    const toggleTask = async (id) => {
+        const taskToToggle = tasks.find(t => t.id === id);
+        if (!taskToToggle) return;
+
+        const newStatus = !taskToToggle.completed;
+
+        // Optimistic UI update
+        setTasks(tasks.map(t => t.id === id ? { ...t, completed: newStatus } : t));
+
+        // Sync to Supabase if it's not a temp ID
+        if (typeof id === 'number' && id > 1000000000000) return; // Skip temp IDs
+
+        await supabase
+            .from('tasks')
+            .update({ completed: newStatus })
+            .eq('id', id);
     };
 
-    const removeTask = (id) => {
+    const removeTask = async (id) => {
+        // Optimistic UI update
         setTasks(tasks.filter(t => t.id !== id));
+
+        // Sync to Supabase
+        await supabase
+            .from('tasks')
+            .delete()
+            .eq('id', id);
     };
 
     return (
