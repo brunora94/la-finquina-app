@@ -35,7 +35,7 @@ const Tasks = () => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Initial fetch from Supabase
+    // Initial fetch and Migration from Supabase
     useEffect(() => {
         const fetchTasks = async () => {
             const { data, error } = await supabase
@@ -43,10 +43,27 @@ const Tasks = () => {
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (!error && data) {
-                setTasks(data);
+            if (!error) {
+                if (data && data.length > 0) {
+                    setTasks(data);
+                } else {
+                    // MIGRATION: If cloud is empty, check local storage
+                    const saved = localStorage.getItem('finquina_tasks');
+                    if (saved) {
+                        const localTasks = JSON.parse(saved);
+                        if (localTasks.length > 0) {
+                            console.log('Migrando tareas a la nube...');
+                            // Upload local tasks to Supabase (without IDs so they get new ones)
+                            const tasksToUpload = localTasks.map(({ id, ...rest }) => rest);
+                            const { data: uploadedData } = await supabase
+                                .from('tasks')
+                                .insert(tasksToUpload)
+                                .select();
+                            if (uploadedData) setTasks(uploadedData);
+                        }
+                    }
+                }
             } else {
-                // Fallback to localStorage if Supabase fails or isn't set up
                 const saved = localStorage.getItem('finquina_tasks');
                 if (saved) setTasks(JSON.parse(saved));
             }

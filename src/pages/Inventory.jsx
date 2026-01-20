@@ -22,8 +22,25 @@ const Inventory = () => {
                 .select('*')
                 .order('date', { ascending: false });
 
-            if (!error && data) {
-                setExpenses(data);
+            if (!error) {
+                if (data && data.length > 0) {
+                    setExpenses(data);
+                } else {
+                    // MIGRATION: If cloud is empty, check local storage
+                    const saved = localStorage.getItem('finquina_expenses');
+                    if (saved) {
+                        const localData = JSON.parse(saved);
+                        if (localData.length > 0) {
+                            console.log('Migrando gastos a la nube...');
+                            const toUpload = localData.map(({ id, ...rest }) => rest);
+                            const { data: uploaded } = await supabase
+                                .from('expenses')
+                                .insert(toUpload)
+                                .select();
+                            if (uploaded) setExpenses(uploaded);
+                        }
+                    }
+                }
             } else {
                 const saved = localStorage.getItem('finquina_expenses');
                 if (saved) setExpenses(JSON.parse(saved));
@@ -61,7 +78,7 @@ const Inventory = () => {
             .select();
 
         if (!error && data) {
-            setExpenses(prev => prev.map(e => e.id === tempId ? data[0] : t));
+            setExpenses(prev => prev.map(e => e.id === tempId ? data[0] : e));
         }
     };
 

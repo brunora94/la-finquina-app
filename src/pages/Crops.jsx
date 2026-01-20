@@ -40,8 +40,25 @@ const Crops = () => {
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (!error && data) {
-                setCrops(data);
+            if (!error) {
+                if (data && data.length > 0) {
+                    setCrops(data);
+                } else {
+                    // MIGRATION
+                    const saved = localStorage.getItem('finquina_crops_v2');
+                    if (saved) {
+                        const localData = JSON.parse(saved);
+                        if (localData.length > 0) {
+                            console.log('Migrando cultivos a la nube...');
+                            const toUpload = localData.map(({ id, ...rest }) => rest);
+                            const { data: uploaded } = await supabase
+                                .from('crops')
+                                .insert(toUpload)
+                                .select();
+                            if (uploaded) setCrops(uploaded);
+                        }
+                    }
+                }
             } else {
                 const saved = localStorage.getItem('finquina_crops_v2');
                 if (saved) setCrops(JSON.parse(saved));
