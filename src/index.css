@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #fbf7f4; /* earth-50 */
+  color: #174817; /* nature-900 */
+}
+
+@layer components {
+  .card-premium {
+    @apply bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-white/20 p-6;
+  }
+  .btn-primary {
+    @apply bg-nature-600 hover:bg-nature-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-95;
+  }
+}
