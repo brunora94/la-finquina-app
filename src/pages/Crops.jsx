@@ -50,7 +50,16 @@ const Crops = () => {
                         const localData = JSON.parse(saved);
                         if (localData.length > 0) {
                             console.log('Migrando cultivos a la nube...');
-                            const toUpload = localData.map(({ id, ...rest }) => rest);
+                            // CLEAN DATA: convert emptystrings to nulls for dates
+                            const toUpload = localData.map(({ id, ...rest }) => {
+                                const clean = { ...rest };
+                                if (!clean.plantedDate) clean.plantedDate = null;
+                                if (!clean.harvestDate) clean.harvestDate = null;
+                                if (!clean.lastPruning) clean.lastPruning = null;
+                                if (!clean.lastTreatment) clean.lastTreatment = null;
+                                return clean;
+                            });
+
                             const { data: uploaded } = await supabase
                                 .from('crops')
                                 .insert(toUpload)
@@ -129,11 +138,13 @@ const Crops = () => {
                     c.id === id ? { ...c, image: dataUrl, aiAnalysis: null } : c
                 ));
 
-                // Sync to Supabase
-                await supabase
-                    .from('crops')
-                    .update({ image: dataUrl, aiAnalysis: null })
-                    .eq('id', id);
+                // Sync to Supabase - only if we have a real DB id
+                if (typeof id === 'number' && id < 1000000000000) {
+                    await supabase
+                        .from('crops')
+                        .update({ image: dataUrl, aiAnalysis: null })
+                        .eq('id', id);
+                }
             };
             img.src = event.target.result;
         };
@@ -184,12 +195,12 @@ const Crops = () => {
                 return c;
             }));
 
-            // Sync to Supabase
-            if (updatedCrop) {
+            // Sync to Supabase - only if we have a real DB id
+            if (updatedCrop && typeof id === 'number' && id < 1000000000000) {
                 await supabase
                     .from('crops')
                     .update({
-                        harvestDate: updatedCrop.harvestDate,
+                        harvestDate: updatedCrop.harvestDate || null,
                         aiAnalysis: updatedCrop.aiAnalysis
                     })
                     .eq('id', id);
@@ -202,8 +213,15 @@ const Crops = () => {
     const handleSave = async () => {
         if (!formData.name) return;
 
+        // Limpiar datos: Convertir strings vacíos en fechas a null para Supabase
+        const cleanData = { ...formData };
+        if (!cleanData.plantedDate) cleanData.plantedDate = null;
+        if (!cleanData.harvestDate) cleanData.harvestDate = null;
+        if (!cleanData.lastPruning) cleanData.lastPruning = null;
+        if (!cleanData.lastTreatment) cleanData.lastTreatment = null;
+
         const newCropData = {
-            ...formData,
+            ...cleanData,
             image: null,
             aiAnalysis: null,
             created_at: new Date().toISOString()
@@ -218,6 +236,10 @@ const Crops = () => {
             .from('crops')
             .insert([newCropData])
             .select();
+
+        if (error) {
+            console.error("Error al guardar cultivo en Supabase:", error);
+        }
 
         if (!error && data) {
             setCrops(prev => prev.map(c => c.id === tempId ? data[0] : c));
