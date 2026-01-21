@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { supabase } from '../lib/supabase';
+import { analyzeCropPhoto } from '../lib/gemini';
 
 const CROP_TYPES = [
     { id: 'huerto', label: 'Huerto', icon: <Sprout />, color: 'text-green-600', bg: 'bg-green-50' },
@@ -151,46 +152,32 @@ const Crops = () => {
         reader.readAsDataURL(file);
     };
 
-    const analyzeWithAI = (id) => {
+    const analyzeWithAI = async (id) => {
+        const crop = crops.find(c => c.id === id);
+        if (!crop || !crop.image) {
+            alert("Por favor, sube una foto antes de analizar.");
+            return;
+        }
+
         setAnalyzingId(id);
 
-        // Simulating IA Vision processing
-        setTimeout(async () => {
+        try {
+            // Real AI Analysis with Gemini
+            const analysis = await analyzeCropPhoto(crop.image, crop);
+
             let updatedCrop = null;
 
             setCrops(prevCrops => prevCrops.map(c => {
                 if (c.id === id) {
-                    const isFrutal = c.type === 'frutal';
-
-                    const plantedDate = new Date(c.plantedDate);
-                    let daysToHarvest = isFrutal ? 180 : 90;
-
-                    const nameLower = c.name.toLowerCase();
-                    if (nameLower.includes('tomate')) daysToHarvest = 85;
-                    else if (nameLower.includes('lechuga')) daysToHarvest = 50;
-                    else if (nameLower.includes('pimiento')) daysToHarvest = 110;
-                    else if (nameLower.includes('manzano')) daysToHarvest = 160;
-                    else if (nameLower.includes('pera')) daysToHarvest = 150;
-                    else if (nameLower.includes('brócoli') || nameLower.includes('brécol')) daysToHarvest = 95;
-                    else if (nameLower.includes('patata')) daysToHarvest = 120;
-                    else if (nameLower.includes('calabacín')) daysToHarvest = 55;
-
-                    const estDate = new Date(plantedDate.getTime() + (daysToHarvest * 24 * 60 * 60 * 1000));
-                    const estDateStr = estDate.toISOString().split('T')[0];
-
-                    const diagnostics = isFrutal
-                        ? `Análisis de follaje: ÉXITO. Se observa un vigor del 92%. Basado en el estado de brotación y fecha de plantación, la IA estima la cosecha óptima para el ${estDateStr}. Recomendación: Revisar riego y aplicar abonado de floración.`
-                        : `Análisis de crecimiento: VIGOROSO. Se detecta un desarrollo foliar saludable en el ${c.name}. La IA estima que alcanzará su punto óptimo de maduración el ${estDateStr}. Recomendación: Mantener humedad constante y vigilar posibles plagas de temporada.`;
-
                     updatedCrop = {
                         ...c,
-                        harvestDate: estDateStr,
+                        harvestDate: analysis.estimatedHarvestDate,
                         aiAnalysis: {
-                            status: "Éxito",
-                            diagnosis: diagnostics,
-                            action: isFrutal ? "Poda y Abonado" : "Abonado Follaje",
+                            status: analysis.status,
+                            diagnosis: analysis.diagnosis,
+                            action: analysis.action,
                             timestamp: new Date().toLocaleString(),
-                            estimatedHarvest: estDateStr
+                            estimatedHarvest: analysis.estimatedHarvestDate
                         }
                     };
                     return updatedCrop;
@@ -198,7 +185,7 @@ const Crops = () => {
                 return c;
             }));
 
-            // Sync to Supabase - only if we have a real DB id
+            // Sync to Supabase
             if (updatedCrop && typeof id === 'number' && id < 1000000000000) {
                 await supabase
                     .from('crops')
@@ -208,9 +195,12 @@ const Crops = () => {
                     })
                     .eq('id', id);
             }
-
+        } catch (error) {
+            console.error("Error en análisis IA:", error);
+            alert("Error al conectar con la IA de Google. Revisa tu API Key.");
+        } finally {
             setAnalyzingId(null);
-        }, 2500);
+        }
     };
 
     const handleSave = async () => {
