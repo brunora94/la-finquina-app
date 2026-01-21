@@ -10,50 +10,55 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
         throw new Error("API_KEY_MISSING");
     }
 
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: 'v1' });
+    // Lista de modelos a probar en orden de preferencia
+    const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-latest"];
+    let lastError = null;
 
-        const prompt = `
-      Eres un experto agrónomo experto en IA. 
-      Analiza esta foto de un cultivo de ${cropInfo.name} (${cropInfo.variety || 'variedad común'}).
-      Datos del cultivo:
-      - Fecha de plantación: ${cropInfo.plantedDate}
-      - Tipo: ${cropInfo.type}
-      
-      Por favor, proporciona un análisis detallado que incluya:
-      1. Diagnóstico de salud actual (vigor, color, posibles plagas).
-      2. Estimación de cuánto tiempo le falta para la cosecha óptima (en días o fecha aproximada).
-      3. Recomendación de acción inmediata (riego, abonado, poda, etc.).
-      
-      IMPORTANTE: Devuelve la respuesta EXCLUSIVAMENTE en formato JSON con esta estructura:
-      {
-        "status": "Éxito o Advertencia",
-        "diagnosis": "Tu diagnóstico detallado aquí...",
-        "action": "Acción recomendada corta",
-        "estimatedDaysToHarvest": número de días,
-        "estimatedHarvestDate": "YYYY-MM-DD"
-      }
-    `;
+    for (const modelName of modelsToTry) {
+        try {
+            console.log(`Intentando análisis con modelo: ${modelName}...`);
+            const model = genAI.getGenerativeModel({ model: modelName });
 
-        // Convert base64 to parts for Gemini
-        const base64Data = imageBuffer.split(",")[1];
+            const prompt = `
+        Eres un experto agrónomo experto en IA. 
+        Analiza esta foto de un cultivo de ${cropInfo.name} (${cropInfo.variety || 'variedad común'}).
+        Datos del cultivo:
+        - Fecha de plantación: ${cropInfo.plantedDate}
+        - Tipo: ${cropInfo.type}
+        
+        Por favor, proporciona un análisis detallado que incluya:
+        1. Diagnóstico de salud actual (vigor, color, posibles plagas).
+        2. Estimación de cuánto tiempo le falta para la cosecha óptima (en días o fecha aproximada).
+        3. Recomendación de acción inmediata (riego, abonado, poda, etc.).
+        
+        IMPORTANTE: Devuelve la respuesta EXCLUSIVAMENTE en formato JSON con esta estructura:
+        {
+          "status": "Éxito o Advertencia",
+          "diagnosis": "Tu diagnóstico detallado aquí...",
+          "action": "Acción recomendada corta",
+          "estimatedDaysToHarvest": 10,
+          "estimatedHarvestDate": "YYYY-MM-DD"
+        }
+      `;
 
-        const imagePart = {
-            inlineData: {
-                data: base64Data,
-                mimeType: "image/jpeg",
-            },
-        };
+            const base64Data = imageBuffer.split(",")[1];
+            const imagePart = {
+                inlineData: { data: base64Data, mimeType: "image/jpeg" },
+            };
 
-        const result = await model.generateContent([prompt, imagePart]);
-        const response = await result.response;
-        const text = response.text();
+            const result = await model.generateContent([prompt, imagePart]);
+            const response = await result.response;
+            const text = response.text();
 
-        // Clean JSON if Gemini adds markdown
-        const jsonStr = text.replace(/```json|```/g, "").trim();
-        return JSON.parse(jsonStr);
-    } catch (error) {
-        console.error("Gemini Error Detail:", error.message || error);
-        throw error;
+            const jsonStr = text.replace(/```json|```/g, "").trim();
+            return JSON.parse(jsonStr);
+        } catch (error) {
+            console.warn(`Modelo ${modelName} falló:`, error.message);
+            lastError = error;
+            // Continuar al siguiente modelo...
+        }
     }
+
+    // Si llegamos aquí, todos fallaron
+    throw lastError;
 };
