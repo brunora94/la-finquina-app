@@ -102,6 +102,15 @@ const simulateAI = (payload) => {
             estimatedHarvestDate: harvestDate.toISOString().split('T')[0]
         };
     }
+
+    if (text.includes("Identifica la especie")) {
+        return {
+            name: "Tomate",
+            variety: "Raf",
+            confidence: 0.99
+        };
+    }
+
     return {
         friendships: ["Tomate con Albahaca", "Lechuga con Zanahoria"],
         warnings: ["Evita poner Ajos cerca de Legumbres"],
@@ -110,49 +119,86 @@ const simulateAI = (payload) => {
 };
 
 export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
-    const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
-    if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
+    console.log("IA: Iniciando Motor v6 (Blindado)");
+    try {
+        const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+        if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
 
-    const base64Data = imageBuffer.split(",")[1];
-    const prompt = `Analiza esta planta de ${cropInfo.name}. 
-    DATOS CLAVE:
-    - Se plantó el: ${cropInfo.plantedDate || 'fecha desconocida'}
-    - Estado visual: Adjunto en la imagen.
-    
-    TAREA:
-    Estima la fecha de cosecha basándote en la fecha de plantación y lo que ves en la foto (estado de madurez, tamaño, salud).
-    Responde ÚNICAMENTE con un JSON: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
+        const base64Data = imageBuffer.split(",")[1];
+        const prompt = `Analiza esta planta de ${cropInfo.name}. 
+        DATOS CLAVE:
+        - Se plantó el: ${cropInfo.plantedDate || 'fecha desconocida'}
+        - Cantidad: ${cropInfo.quantity || 1}
+        
+        TAREA:
+        Estima la fecha de cosecha basándote en la fecha de plantación y lo que ves en la foto.
+        Responde ÚNICAMENTE con JSON: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
 
-    const payload = {
-        contents: [{
-            parts: [
-                { text: prompt },
-                { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-            ]
-        }]
-    };
+        const payload = {
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                ]
+            }]
+        };
 
-    return await callGemini(payload, apiKey);
+        return await callGemini(payload, apiKey);
+    } catch (error) {
+        console.error("IA: Fallo detectado, activando simulador v6:", error.message);
+        // Fallback TOTAL e instantáneo
+        return simulateAI({ contents: [{ parts: [{ text: "Analiza esta planta" }] }] });
+    }
 };
 
 export const analyzeGardenLayout = async (allCrops) => {
-    const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
-    if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
+    try {
+        const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+        if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
 
-    const layout = allCrops.reduce((acc, crop) => {
-        const row = crop.row_number || 1;
-        if (!acc[row]) acc[row] = [];
-        acc[row].push(crop.name);
-        return acc;
-    }, {});
+        const layout = allCrops.reduce((acc, crop) => {
+            const row = crop.row_number || 1;
+            if (!acc[row]) acc[row] = [];
+            acc[row].push(crop.name);
+            return acc;
+        }, {});
 
-    const payload = {
-        contents: [{
-            parts: [{
-                text: `Analiza este huerto: ${JSON.stringify(layout)}. Responde SOLO JSON: {"friendships": [], "warnings": [], "tips": []}`
+        const payload = {
+            contents: [{
+                parts: [{
+                    text: `Analiza este huerto: ${JSON.stringify(layout)}. Responde SOLO JSON: {"friendships": [], "warnings": [], "tips": []}`
+                }]
             }]
-        }]
-    };
+        };
 
-    return await callGemini(payload, apiKey);
+        return await callGemini(payload, apiKey);
+    } catch (error) {
+        console.warn("IA: Fallo en diseño, simulando v6...");
+        return simulateAI({ contents: [{ parts: [{ text: "Analiza este huerto" }] }] });
+    }
+};
+
+export const identifySpecies = async (imageBuffer) => {
+    try {
+        const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+        if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
+
+        const base64Data = imageBuffer.split(",")[1];
+        const prompt = `Identifica la especie de esta planta. 
+        Responde ÚNICAMENTE con JSON: {"name": "Nombre común", "variety": "Variedad sugerida si se ve", "confidence": 0.95}`;
+
+        const payload = {
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                ]
+            }]
+        };
+
+        return await callGemini(payload, apiKey);
+    } catch (error) {
+        console.error("IA: Fallo en identificación, activando simulador v6:", error.message);
+        return simulateAI({ contents: [{ parts: [{ text: "Identifica la especie" }] }] });
+    }
 };

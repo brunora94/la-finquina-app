@@ -7,7 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { supabase } from '../lib/supabase';
-import { analyzeCropPhoto, analyzeGardenLayout } from '../lib/gemini';
+import { analyzeCropPhoto, analyzeGardenLayout, identifySpecies } from '../lib/gemini';
 import { LayoutGrid } from 'lucide-react';
 
 const CROP_TYPES = [
@@ -155,6 +155,34 @@ const Crops = () => {
                 }
             };
             img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const [identifying, setIdentifying] = useState(false);
+
+    const handleIdentify = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const base64 = event.target.result;
+            setIdentifying(true);
+            try {
+                const result = await identifySpecies(base64);
+                if (result) {
+                    setFormData(prev => ({
+                        ...prev,
+                        name: result.name || prev.name,
+                        variety: result.variety || prev.variety,
+                    }));
+                }
+            } catch (error) {
+                console.error("Identificación fallida:", error);
+            } finally {
+                setIdentifying(false);
+            }
         };
         reader.readAsDataURL(file);
     };
@@ -414,7 +442,10 @@ const Crops = () => {
                                         <div className="p-2 bg-indigo-50 rounded-xl">
                                             <Bot className="text-indigo-600" />
                                         </div>
-                                        <h4 className="font-black text-indigo-900 uppercase tracking-widest text-xs">Informe de Armonía Vegetal</h4>
+                                        <div>
+                                            <h4 className="font-black text-indigo-900 uppercase tracking-widest text-xs leading-none">Informe de Armonía Vegetal</h4>
+                                            <span className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">Cerebro IA v6.0</span>
+                                        </div>
                                     </div>
                                     <X size={18} className="text-indigo-200 cursor-pointer" onClick={() => setLayoutAnalysis(null)} />
                                 </div>
@@ -551,7 +582,10 @@ const Crops = () => {
                                                         <div className="p-1 bg-white rounded-lg shadow-sm">
                                                             <Bot size={14} className="text-indigo-600" />
                                                         </div>
-                                                        <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">Diagnóstico de Élite</span>
+                                                        <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center justify-between grow">
+                                                            <span>Diagnóstico de Élite</span>
+                                                            <span className="text-[7px] text-indigo-400">v6.0</span>
+                                                        </span>
                                                     </div>
                                                     <p className="text-xs text-indigo-900 leading-relaxed font-medium">{crop.aiAnalysis.diagnosis}</p>
                                                     <div className="mt-3 pt-3 border-t border-indigo-100 flex justify-between items-center">
@@ -675,9 +709,16 @@ const Crops = () => {
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 relative">
                                         <label className="text-[10px] font-black text-earth-400 uppercase tracking-widest ml-1">Cultivo / Especie</label>
-                                        <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="input-f" placeholder="Ej: Manzano, Tomate..." />
+                                        <div className="relative">
+                                            <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="input-f pr-12" placeholder="Ej: Manzano, Tomate..." />
+                                            <label className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-xl shadow-lg cursor-pointer hover:bg-indigo-700 active:scale-95 transition-all transition-colors">
+                                                {identifying ? <Bot size={16} className="animate-spin" /> : <Camera size={16} />}
+                                                <input type="file" accept="image/*" onChange={handleIdentify} className="hidden" />
+                                            </label>
+                                        </div>
+                                        {identifying && <p className="text-[8px] text-indigo-500 font-bold absolute -bottom-3 left-1 animate-pulse">Consultando Cerebro IA...</p>}
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-earth-400 uppercase tracking-widest ml-1">Variedad específica</label>
