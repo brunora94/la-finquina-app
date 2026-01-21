@@ -1,12 +1,13 @@
 
-// Modelos más estables y compatibles con v1beta
-const STABLE_MODELS = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-1.5-pro"];
+// Modelos más estables y compatibles con el endpoint v1
+const STABLE_MODELS = ["gemini-1.5-flash", "gemini-1.0-pro"];
 
 /**
  * Utilidad robusta para llamar a Gemini con reintentos automáticos
  */
 const fetchGemini = async (modelName, payload, apiKey) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+    // Cambiamos a v1 que es el endpoint estable de producción
+    const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent`;
 
     // Forzamos que la IA siempre devuelva JSON si el modelo lo soporta
     const finalPayload = {
