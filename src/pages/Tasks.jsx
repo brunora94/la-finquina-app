@@ -195,9 +195,12 @@ const Tasks = () => {
             {/* AI Suggestions Section */}
             {suggestions.length > 0 && (
                 <div className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                        <Sparkles size={18} className="text-indigo-500" />
-                        <h3 className="text-sm font-black text-indigo-900 uppercase tracking-widest font-outfit">Sugerencias de La Finquina</h3>
+                    <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                            <Sparkles size={18} className="text-indigo-500" />
+                            <h3 className="text-sm font-black text-indigo-900 uppercase tracking-widest font-outfit">Sugerencias de La Finquina</h3>
+                        </div>
+                        <span className="text-[9px] font-black text-white bg-indigo-500 px-2 py-0.5 rounded-full shadow-sm animate-pulse">v3 - IA Power</span>
                     </div>
                     <div className="flex gap-4 overflow-x-auto pb-4 px-1 snap-x no-scrollbar">
                         {suggestions.map(sug => (
