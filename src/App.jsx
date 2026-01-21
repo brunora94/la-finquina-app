@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Crops from './pages/Crops';
 import Inventory from './pages/Inventory';
+import Harvests from './pages/Harvests';
 
 function App() {
     const [currentPage, setCurrentPage] = useState('dashboard');
@@ -14,6 +15,7 @@ function App() {
             case 'tasks': return <Tasks />;
             case 'crops': return <Crops />;
             case 'inventory': return <Inventory />;
+            case 'harvests': return <Harvests />;
             default: return <Dashboard onNavigate={setCurrentPage} />;
         }
     };

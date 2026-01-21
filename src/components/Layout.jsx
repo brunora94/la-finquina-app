@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Sprout, ClipboardList, Package } from 'lucide-react';
+import { Home, Sprout, ClipboardList, Package, Trophy } from 'lucide-react';
 import clsx from 'clsx';
 import { FARM_CONFIG } from '../constants';
 
@@ -43,7 +43,8 @@ const Layout = ({ children, currentPage, onNavigate }) => {
                     <NavItem icon={Home} label="Inicio" active={currentPage === 'dashboard'} onClick={() => onNavigate('dashboard')} />
                     <NavItem icon={ClipboardList} label="Tareas" active={currentPage === 'tasks'} onClick={() => onNavigate('tasks')} />
                     <NavItem icon={Sprout} label="Cultivos" active={currentPage === 'crops'} onClick={() => onNavigate('crops')} />
-                    <NavItem icon={Package} label="Inventario" active={currentPage === 'inventory'} onClick={() => onNavigate('inventory')} />
+                    <NavItem icon={Package} label="Recursos" active={currentPage === 'inventory'} onClick={() => onNavigate('inventory')} />
+                    <NavItem icon={Trophy} label="Éxitos" active={currentPage === 'harvests'} onClick={() => onNavigate('harvests')} />
                 </div>
             </nav>
 
@@ -52,7 +53,8 @@ const Layout = ({ children, currentPage, onNavigate }) => {
                 <NavItem icon={Home} label="Inicio" active={currentPage === 'dashboard'} onClick={() => onNavigate('dashboard')} />
                 <NavItem icon={ClipboardList} label="Tareas" active={currentPage === 'tasks'} onClick={() => onNavigate('tasks')} />
                 <NavItem icon={Sprout} label="Cultivos" active={currentPage === 'crops'} onClick={() => onNavigate('crops')} />
-                <NavItem icon={Package} label="Inventario" active={currentPage === 'inventory'} onClick={() => onNavigate('inventory')} />
+                <NavItem icon={Package} label="Recursos" active={currentPage === 'inventory'} onClick={() => onNavigate('inventory')} />
+                <NavItem icon={Trophy} label="Éxitos" active={currentPage === 'harvests'} onClick={() => onNavigate('harvests')} />
             </nav>
         </div>
     );

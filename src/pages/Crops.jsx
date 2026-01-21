@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { supabase } from '../lib/supabase';
 import { analyzeCropPhoto, analyzeGardenLayout, identifySpecies } from '../lib/gemini';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 const CROP_TYPES = [
     { id: 'huerto', label: 'Huerto', icon: <Sprout />, color: 'text-green-600', bg: 'bg-green-50' },
@@ -185,6 +186,32 @@ const Crops = () => {
             }
         };
         reader.readAsDataURL(file);
+    };
+
+    const [qrValue, setQrValue] = useState(null);
+    const [harvestingCrop, setHarvestingCrop] = useState(null);
+    const [harvestData, setHarvestData] = useState({ quantity_kg: '', notes: '', image: null });
+
+    const handleHarvestSubmit = async () => {
+        if (!harvestingCrop || !harvestData.quantity_kg) return;
+
+        const finalHarvest = {
+            crop_name: harvestingCrop.name,
+            variety: harvestingCrop.variety,
+            quantity_kg: parseFloat(harvestData.quantity_kg),
+            harvest_date: new Date().toISOString().split('T')[0],
+            image: harvestData.image || harvestingCrop.image,
+            ia_score: harvestingCrop.aiAnalysis ? 95 : 80, // Simplificación puntuación
+            notes: harvestData.notes
+        };
+
+        const { error } = await supabase.from('harvests').insert([finalHarvest]);
+        if (!error) {
+            await supabase.from('crops').delete().eq('id', harvestingCrop.id);
+            setCrops(crops.filter(c => c.id !== harvestingCrop.id));
+            setHarvestingCrop(null);
+            setHarvestData({ quantity_kg: '', notes: '', image: null });
+        }
     };
 
     const analyzeWithAI = async (id) => {
@@ -548,6 +575,13 @@ const Crops = () => {
 
                                             <div className="absolute top-4 right-4 flex gap-2">
                                                 <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => setQrValue(`${window.location.origin}?crop=${crop.id}`)}
+                                                        className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-nature-600 hover:bg-nature-50 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Generar QR"
+                                                    >
+                                                        <QrCode size={16} />
+                                                    </button>
                                                     <button onClick={() => openEditModal(crop)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-indigo-500 hover:bg-indigo-50 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <Activity size={16} />
                                                     </button>
@@ -624,7 +658,7 @@ const Crops = () => {
                                             </div>
 
                                             {crop.harvestDate && (
-                                                <div className="bg-green-600 text-white rounded-2xl p-4 mb-4 shadow-lg shadow-green-100 flex items-center justify-between">
+                                                <div className="bg-green-600 text-white rounded-2xl p-4 mb-4 shadow-lg shadow-green-100 flex items-center justify-between group/harvest">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-white/20 rounded-xl">
                                                             <Sprout size={20} className="text-white" />
@@ -634,7 +668,12 @@ const Crops = () => {
                                                             <p className="text-lg font-black font-outfit leading-none mt-0.5">{crop.harvestDate}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-[10px] font-black bg-white/20 px-2 py-1 rounded-lg uppercase">Por IA</div>
+                                                    <button
+                                                        onClick={() => setHarvestingCrop(crop)}
+                                                        className="text-[10px] font-black bg-white text-green-700 px-3 py-2 rounded-xl uppercase hover:bg-green-50 transition-colors shadow-sm"
+                                                    >
+                                                        Recoger
+                                                    </button>
                                                 </div>
                                             )}
 
@@ -801,23 +840,92 @@ const Crops = () => {
                 )}
             </AnimatePresence>
 
+            {/* QR Code Modal */}
+            <AnimatePresence>
+                {qrValue && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setQrValue(null)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white rounded-[3rem] p-10 flex flex-col items-center gap-6 shadow-2xl max-w-xs w-full text-center">
+                            <div className="p-6 bg-nature-50 rounded-[2.5rem] border-4 border-nature-100 shadow-inner">
+                                <QRCodeSVG value={qrValue} size={200} level="H" includeMargin={true} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-nature-900 font-outfit">Etiqueta de Campo</h3>
+                                <p className="text-earth-400 text-xs font-medium mt-2">Imprime este código y colócalo en tu cultivo para acceso rápido.</p>
+                            </div>
+                            <button onClick={() => window.print()} className="w-full p-4 bg-nature-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs">Imprimir</button>
+                            <button onClick={() => setQrValue(null)} className="text-nature-400 font-bold text-xs">Cerrar</button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Harvest Confirmation Modal */}
+            <AnimatePresence>
+                {harvestingCrop && (
+                    <div className="fixed inset-0 z-[150] flex items-end justify-center p-0 sm:p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setHarvestingCrop(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="relative bg-white rounded-t-[3rem] p-8 w-full max-w-lg shadow-2xl">
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                                    <Trophy size={32} />
+                                </div>
+                                <h3 className="text-2xl font-black text-nature-900 font-outfit">¡Enhorabuena! 🏆</h3>
+                                <p className="text-earth-400 text-sm">Vas a registrar la cosecha de <strong>{harvestingCrop.name}</strong></p>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-earth-400 uppercase tracking-widest ml-1">Kilos Recolectados (aprox)</label>
+                                    <input
+                                        type="number"
+                                        value={harvestData.quantity_kg}
+                                        onChange={e => setHarvestData({ ...harvestData, quantity_kg: e.target.value })}
+                                        className="w-full p-5 bg-nature-50 rounded-2xl border-2 border-nature-100 text-3xl font-black text-center focus:border-yellow-400 outline-none transition-all"
+                                        placeholder="0.0"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-earth-400 uppercase tracking-widest ml-1">Notas del Éxito</label>
+                                    <textarea
+                                        value={harvestData.notes}
+                                        onChange={e => setHarvestData({ ...harvestData, notes: e.target.value })}
+                                        className="w-full p-5 bg-nature-50 rounded-2xl border-2 border-nature-100 text-sm font-bold min-h-[100px] outline-none"
+                                        placeholder="¿Cómo han salido? ¿Sabor, tamaño?..."
+                                    />
+                                </div>
+                                <button onClick={handleHarvestSubmit} className="w-full p-5 bg-nature-900 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-nature-100">
+                                    Finalizar y Guardar en Hall of Fame
+                                </button>
+                                <button onClick={() => setHarvestingCrop(null)} className="w-full text-center text-earth-300 font-black text-xs uppercase tracking-widest">Cancelar</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             <style>{`
-    .input - f {
-    width: 100 %;
+                @media print {
+                    body * { visibility: hidden; }
+                    .fixed.inset-0.z-\\[200\\], .fixed.inset-0.z-\\[200\\] * { visibility: visible; }
+                    .fixed.inset-0.z-\\[200\\] { position: absolute; left: 0; top: 0; }
+                }
+                .input-f {
+    width: 100%;
     padding: 1rem 1.25rem;
-    background - color: #f7f9f7;
+    background-color: #f7f9f7;
     border: 1px solid #e2e8e2;
-    border - radius: 1.25rem;
-    font - size: 0.875rem;
-    font - weight: 600;
+    border-radius: 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
     color: #1a2e1a;
     transition: all 0.2s;
 }
-                .input - f:focus {
+                .input-f:focus {
     outline: none;
-    background - color: white;
-    border - color: #32ad32;
-    box - shadow: 0 0 0 4px rgba(50, 173, 50, 0.1);
+    background-color: white;
+    border-color: #32ad32;
+    box-shadow: 0 0 0 4px rgba(50, 173, 50, 0.1);
 }
 `}</style>
         </div>
