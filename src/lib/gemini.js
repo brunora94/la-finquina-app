@@ -1,11 +1,11 @@
-// Modelos más estables y compatibles
-const STABLE_MODELS = ["gemini-1.5-flash", "gemini-1.5-flash-8b"];
+// El modelo más robusto y compatible con JSON en la actualidad
+const STABLE_MODELS = ["gemini-1.5-flash"];
 
 /**
  * Utilidad robusta para llamar a Gemini con reintentos automáticos
  */
 const fetchGemini = async (modelName, payload, apiKey) => {
-    // Volvemos a v1beta porque v1 NO soporta 'response_mime_type' en algunos modelos/regiones
+    // v1beta es el que mejor soporta response_mime_type: "application/json"
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
     // Forzamos que la IA siempre devuelva JSON si el modelo lo soporta
