@@ -15,8 +15,9 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     const base64Data = imageBuffer.split(",")[1];
 
     try {
-        // CONEXIÓN v10 (Gemini 1.5 Flash - Alta capacidad + Términos aceptados)
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent`;
+        // CONEXIÓN v11 (Gemini 1.5 Flash + v1beta + Header Auth)
+        // Usamos v1beta porque es la ruta que llegó a conectar en la v9
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
 
         const response = await fetch(url, {
             method: 'POST',
@@ -33,7 +34,7 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(`v10_Error_${response.status}_${errorData.error?.message || 'Unknown'}`);
+            throw new Error(`v11_Error_${response.status}_${errorData.error?.message || 'Unknown'}`);
         }
 
         const data = await response.json();
@@ -41,6 +42,6 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
         const jsonStr = text.replace(/```json|```/g, "").trim();
         return JSON.parse(jsonStr);
     } catch (error) {
-        throw new Error(`(v10) ${error.message}`);
+        throw new Error(`(v11) ${error.message}`);
     }
 };
