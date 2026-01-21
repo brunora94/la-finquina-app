@@ -13,7 +13,8 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     const prompt = `Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
     const base64Data = imageBuffer.split(",")[1];
 
-    const models = ["gemini-1.5-flash-8b", "gemini-1.5-flash", "gemini-1.5-pro"];
+    // Lista de modelos ordenada por robustez y disponibilidad en v1beta
+    const models = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-2.0-flash-exp", "gemini-1.5-pro-latest"];
     let lastError = null;
 
     for (const modelName of models) {
@@ -28,33 +29,44 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
                 },
                 body: JSON.stringify({
                     contents: [{
-                        parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }]
-                    }]
+                        parts: [
+                            { text: prompt },
+                            { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                        ]
+                    }],
+                    generationConfig: {
+                        response_mime_type: "application/json"
+                    }
                 })
             });
 
             if (response.status === 429) {
-                throw new Error("Límite de uso alcanzado. Por favor, espera un minuto y vuelve a intentarlo.");
+                throw new Error("Límite de uso alcanzado. Reintentando con otro modelo...");
             }
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error?.message || "No se pudo conectar con el modelo");
+                throw new Error(errorData.error?.message || `Error ${response.status}`);
             }
 
             const data = await response.json();
+            if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                throw new Error("Respuesta de IA vacía");
+            }
+
             const text = data.candidates[0].content.parts[0].text;
             const jsonStr = text.replace(/```json|```/g, "").trim();
             return JSON.parse(jsonStr);
 
         } catch (error) {
+            console.warn(`Fallo con modelo ${modelName}:`, error.message);
             lastError = error;
-            if (error.message.includes("espera un minuto")) break;
+            // Si es un error de cuota (429), seguimos al siguiente modelo
+            continue;
         }
     }
 
-
-    throw lastError;
+    throw lastError || new Error("No se pudo conectar con ningún modelo de IA");
 };
 
 export const analyzeGardenLayout = async (allCrops) => {
@@ -100,12 +112,16 @@ export const analyzeGardenLayout = async (allCrops) => {
                 'x-goog-api-key': apiKey
             },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    response_mime_type: "application/json"
+                }
             })
         });
 
         if (!response.ok) {
-            throw new Error(`Error de IA: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(`Error de IA (${response.status}): ${errorData.error?.message || 'Error desconocido'}`);
         }
 
         const data = await response.json();
