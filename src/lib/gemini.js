@@ -4,6 +4,12 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+    if (!apiKey || apiKey === 'tu_llave_de_google_gemini') {
+        throw new Error("API_KEY_MISSING");
+    }
+
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -47,7 +53,7 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
         const jsonStr = text.replace(/```json|```/g, "").trim();
         return JSON.parse(jsonStr);
     } catch (error) {
-        console.error("Gemini Error:", error);
+        console.error("Gemini Error Detail:", error.message || error);
         throw error;
     }
 };
