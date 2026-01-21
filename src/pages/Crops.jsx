@@ -95,12 +95,14 @@ const Crops = () => {
         rootstock: '',
         lastTreatment: '',
         notes: '',
-        row_number: 1
+        row_number: 1,
+        quantity: 1
     });
 
     const [analyzingId, setAnalyzingId] = useState(null);
     const [analyzingLayout, setAnalyzingLayout] = useState(false);
     const [layoutAnalysis, setLayoutAnalysis] = useState(null);
+    const [editingId, setEditingId] = useState(null);
 
     useEffect(() => {
         try {
@@ -248,6 +250,54 @@ const Crops = () => {
         }
     };
 
+    const handleUpdate = async () => {
+        if (!formData.name || !editingId) return;
+
+        const cleanData = { ...formData };
+        if (!cleanData.plantedDate) cleanData.plantedDate = null;
+        if (!cleanData.harvestDate) cleanData.harvestDate = null;
+        if (!cleanData.lastPruning) cleanData.lastPruning = null;
+        if (!cleanData.lastTreatment) cleanData.lastTreatment = null;
+
+        // Propagate changes to local state optimistically
+        setCrops(prev => prev.map(c => c.id === editingId ? { ...c, ...cleanData } : c));
+        setIsFormOpen(false);
+        const idToUpdate = editingId;
+        setEditingId(null);
+        resetForm();
+
+        const { error } = await supabase
+            .from('crops')
+            .update(cleanData)
+            .eq('id', idToUpdate);
+
+        if (error) {
+            console.error("Error al actualizar cultivo en Supabase:", error);
+            alert("Error al actualizar: " + error.message);
+        }
+    };
+
+    const openEditModal = (crop) => {
+        setEditingId(crop.id);
+        setFormData({
+            type: crop.type,
+            name: crop.name || '',
+            variety: crop.variety || '',
+            plantedDate: crop.plantedDate || '',
+            health: crop.health || 'excelente',
+            irrigation: crop.irrigation || 'Goteo',
+            harvestDate: crop.harvestDate || '',
+            companion: crop.companion || '',
+            lastPruning: crop.lastPruning || '',
+            rootstock: crop.rootstock || '',
+            lastTreatment: crop.lastTreatment || '',
+            notes: crop.notes || '',
+            row_number: crop.row_number || 1,
+            quantity: crop.quantity || 1
+        });
+        setIsFormOpen(true);
+    };
+
     const resetForm = () => {
         setFormData({
             type: activeTab,
@@ -262,7 +312,8 @@ const Crops = () => {
             rootstock: '',
             lastTreatment: '',
             notes: '',
-            row_number: 1
+            row_number: 1,
+            quantity: 1
         });
     };
 
@@ -465,9 +516,14 @@ const Crops = () => {
                                             </div>
 
                                             <div className="absolute top-4 right-4 flex gap-2">
-                                                <button onClick={() => deleteCrop(crop.id)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-gray-400 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <X size={16} />
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => openEditModal(crop)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-indigo-500 hover:bg-indigo-50 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Activity size={16} />
+                                                    </button>
+                                                    <button onClick={() => deleteCrop(crop.id)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-gray-400 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -523,6 +579,13 @@ const Crops = () => {
                                                         <div className={clsx("w-2 h-2 rounded-full", HEALTH_LEVELS.find(h => h.id === crop.health)?.color)} />
                                                         <span className="text-sm font-black text-nature-800 capitalize tracking-tighter">{crop.health}</span>
                                                     </div>
+                                                </div>
+                                                <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
+                                                    <div className="flex items-center gap-1.5 text-earth-400">
+                                                        <LayoutGrid size={12} />
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider font-outfit">Cantidad</span>
+                                                    </div>
+                                                    <span className="text-sm font-black text-nature-800 tracking-tighter">{crop.quantity || 1} {crop.quantity === 1 ? 'planta' : 'plantas'}</span>
                                                 </div>
                                             </div>
 
@@ -624,6 +687,10 @@ const Crops = () => {
                                         <label className="text-[10px] font-black text-earth-400 uppercase tracking-widest ml-1">Fila del Huerto / Parcela</label>
                                         <input type="number" min="1" value={formData.row_number} onChange={e => setFormData({ ...formData, row_number: parseInt(e.target.value) || 1 })} className="input-f" placeholder="Número de fila" />
                                     </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-earth-400 uppercase tracking-widest ml-1">Cantidad (Nº Plantas)</label>
+                                        <input type="number" min="1" value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })} className="input-f" placeholder="Ej: 12" />
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-5">
@@ -682,10 +749,10 @@ const Crops = () => {
                                 </div>
 
                                 <button
-                                    onClick={handleSave}
+                                    onClick={editingId ? handleUpdate : handleSave}
                                     className="w-full p-5 bg-nature-900 text-white rounded-[2rem] font-black text-lg shadow-2xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-3 mt-4"
                                 >
-                                    <Save size={24} /> Registrar en La Finquina
+                                    <Save size={24} /> {editingId ? 'Guardar Cambios' : 'Registrar en La Finquina'}
                                 </button>
                             </div>
                         </motion.div>
