@@ -237,6 +237,22 @@ const Tasks = () => {
                 </div>
             )}
 
+            {suggestions.length === 0 && crops.length > 0 && (
+                <div className="bg-nature-50/50 border border-nature-100 p-6 rounded-3xl text-center">
+                    <Sparkles size={24} className="text-nature-200 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-nature-800">Agenda al día</p>
+                    <p className="text-[10px] text-earth-400 uppercase font-black tracking-widest mt-1">No hay tareas biológicas para hoy</p>
+                </div>
+            )}
+
+            {crops.length === 0 && !loading && (
+                <div className="bg-indigo-50/50 border border-indigo-100 p-6 rounded-3xl text-center">
+                    <Bot size={24} className="text-indigo-200 mx-auto mb-2" />
+                    <p className="text-sm font-bold text-indigo-900">Agenda Desconectada</p>
+                    <p className="text-[10px] text-indigo-400 uppercase font-black tracking-widest mt-1">Registra cultivos para recibir consejos</p>
+                </div>
+            )}
+
             {/* Task List */}
             <div className="space-y-3">
                 <AnimatePresence mode="popLayout">

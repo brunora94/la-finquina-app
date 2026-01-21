@@ -15,6 +15,17 @@ export const getAgendaSuggestions = (crops = []) => {
         const daysSincePlanting = Math.floor((today - planted) / (1000 * 60 * 60 * 24));
         const name = crop.name.toLowerCase();
 
+        // 0. REGLA UNIVERSAL: Recién Plantado (0-7 días)
+        if (daysSincePlanting >= 0 && daysSincePlanting <= 7) {
+            suggestions.push({
+                id: `sug-new-${crop.id}`,
+                text: `Vigilar enraizamiento de ${crop.name}`,
+                category: 'cultivo',
+                section: `Fila ${crop.row_number || '?'}`,
+                reason: "Planta joven detectada. Asegúrate de que no le falte humedad los primeros días."
+            });
+        }
+
         // REGLAS PARA HUERTO (Hortalizas)
         if (crop.type === 'huerto') {
             // Reglas para Tomates
