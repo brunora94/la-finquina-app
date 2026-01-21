@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CloudRain, Droplets, Waves, Info, Lightbulb, AlertTriangle, CloudSun } from 'lucide-react';
+import { CloudRain, Droplets, Waves, Info, Lightbulb, AlertTriangle, CloudSun, TrendingUp } from 'lucide-react';
 import { FARM_CONFIG } from '../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -108,8 +108,8 @@ const RainWidget = () => {
         <div className="card-premium relative overflow-hidden group !p-0 border-blue-100 bg-white">
             {/* Status Header */}
             <div className={`py-2 px-4 text-center font-bold text-[10px] uppercase tracking-[0.2em] text-white shadow-sm transition-colors duration-500 ${rainData.recommendation.type === 'warning' ? 'bg-gradient-to-r from-orange-500 to-amber-500' :
-                    rainData.recommendation.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                        'bg-gradient-to-r from-blue-500 to-cyan-500'
+                rainData.recommendation.type === 'success' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                    'bg-gradient-to-r from-blue-500 to-cyan-500'
                 }`}>
                 {rainData.recommendation.title}
             </div>
@@ -148,8 +148,8 @@ const RainWidget = () => {
                             animate={{ width: `${rainData.level}%` }}
                             transition={{ duration: 1, ease: "easeOut" }}
                             className={`h-full relative ${rainData.level < 30 ? 'bg-orange-400' :
-                                    rainData.level < 60 ? 'bg-blue-400' :
-                                        'bg-blue-600'
+                                rainData.level < 60 ? 'bg-blue-400' :
+                                    'bg-blue-600'
                                 }`}
                         >
                             <div className="absolute inset-0 bg-white/20 animate-pulse" />
@@ -178,11 +178,19 @@ const RainWidget = () => {
                 </div>
 
                 {/* Forecast Summary */}
-                <div className="mt-6 pt-4 border-t border-nature-50 flex justify-between">
-                    <div className="flex items-center gap-2">
-                        <CloudSun size={14} className="text-earth-400" />
-                        <span className="text-[10px] font-bold text-earth-400 uppercase">Previsión:</span>
-                    </div>
+                <div className="mt-6 pt-4 border-t border-nature-50 flex items-center justify-between">
+                    <button
+                        onClick={() => {
+                            // Dispatch event or pass prop to parent to navigate
+                            window.dispatchEvent(new CustomEvent('navigate', { detail: 'radar' }));
+                        }}
+                        className="flex items-center gap-2 group/btn"
+                    >
+                        <div className="p-1.5 bg-nature-50 rounded-lg group-hover/btn:bg-nature-900 group-hover/btn:text-white transition-all">
+                            <TrendingUp size={12} />
+                        </div>
+                        <span className="text-[10px] font-black text-earth-300 uppercase tracking-widest group-hover/btn:text-nature-900">Ver Radar</span>
+                    </button>
                     <div className="flex gap-4">
                         <div className="text-right">
                             <span className="block text-[8px] font-black text-earth-300 uppercase">Hoy</span>

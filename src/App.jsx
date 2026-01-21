@@ -5,6 +5,7 @@ import Tasks from './pages/Tasks';
 import Crops from './pages/Crops';
 import Inventory from './pages/Inventory';
 import Harvests from './pages/Harvests';
+import ClimateRadar from './components/ClimateRadar';
 
 function App() {
     const [currentPage, setCurrentPage] = useState('dashboard');
@@ -16,6 +17,7 @@ function App() {
             case 'crops': return <Crops />;
             case 'inventory': return <Inventory />;
             case 'harvests': return <Harvests />;
+            case 'radar': return <ClimateRadar onBack={() => setCurrentPage('dashboard')} />;
             default: return <Dashboard onNavigate={setCurrentPage} />;
         }
     };

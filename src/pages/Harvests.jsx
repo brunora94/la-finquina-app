@@ -6,16 +6,22 @@ import clsx from 'clsx';
 
 const Harvests = () => {
     const [harvests, setHarvests] = useState([]);
+    const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchHarvests = async () => {
-            const { data, error } = await supabase
+            const { data: hData, error: hError } = await supabase
                 .from('harvests')
                 .select('*')
                 .order('harvest_date', { ascending: false });
 
-            if (!error && data) setHarvests(data);
+            const { data: eData } = await supabase
+                .from('expenses')
+                .select('category, value');
+
+            if (!hError && hData) setHarvests(hData);
+            if (eData) setExpenses(eData);
             setLoading(false);
         };
         fetchHarvests();
@@ -40,17 +46,37 @@ const Harvests = () => {
                 </div>
             </div>
 
-            {/* Total Stats Card */}
-            <div className="p-8 bg-gradient-to-br from-nature-800 to-black rounded-[2.5rem] text-white flex items-center justify-between shadow-2xl">
-                <div>
-                    <p className="text-nature-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Producción Total Historica</p>
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-5xl font-black font-outfit tracking-tighter">{totalKg.toFixed(1)}</span>
-                        <span className="text-xl font-black text-nature-500 uppercase">Kg</span>
+            {/* ROI & Total Stats Card */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="p-8 bg-gradient-to-br from-nature-800 to-black rounded-[2.5rem] text-white flex items-center justify-between shadow-2xl">
+                    <div>
+                        <p className="text-nature-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Producción Histórica</p>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-black font-outfit tracking-tighter">{totalKg.toFixed(1)}</span>
+                            <span className="text-xl font-black text-nature-500 uppercase">Kg</span>
+                        </div>
+                    </div>
+                    <div className="bg-white/10 p-5 rounded-[2rem] backdrop-blur-md">
+                        <Scale size={32} className="text-yellow-400" />
                     </div>
                 </div>
-                <div className="bg-white/10 p-5 rounded-[2rem] backdrop-blur-md">
-                    <Scale size={32} className="text-yellow-400" />
+
+                <div className="p-8 bg-white border border-nature-100 rounded-[2.5rem] shadow-sm flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-green-50 rounded-xl text-green-600">
+                            <Star size={20} />
+                        </div>
+                        <h4 className="text-xs font-black text-nature-900 uppercase tracking-widest">Inteligencia de Rentabilidad</h4>
+                    </div>
+                    <div className="flex items-baseline gap-3">
+                        <span className="text-4xl font-black text-nature-900 font-outfit">
+                            {(expenses.filter(e => e.category === 'Semillas' || e.category === 'Fertilizante').reduce((a, b) => a + b.value, 0) / (totalKg || 1)).toFixed(2)}€
+                        </span>
+                        <span className="text-sm font-bold text-earth-300 uppercase tracking-widest">/ por kilo cosechado</span>
+                    </div>
+                    <p className="text-[10px] text-earth-400 font-medium mt-2 leading-relaxed italic">
+                        * Cálculo basado en el coste de semillas y abonos contra el peso total recogido.
+                    </p>
                 </div>
             </div>
 

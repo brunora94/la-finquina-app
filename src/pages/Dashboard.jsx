@@ -3,9 +3,16 @@ import { motion } from 'framer-motion';
 import WeatherWidget from '../components/WeatherWidget';
 import MoonWidget from '../components/MoonWidget';
 import RainWidget from '../components/RainWidget';
-import { ClipboardList, Sprout } from 'lucide-react';
+import { ClipboardList, Sprout, TrendingUp } from 'lucide-react';
+import { useEffect } from 'react';
 
 const Dashboard = ({ onNavigate }) => {
+    useEffect(() => {
+        const handleNav = (e) => onNavigate(e.detail);
+        window.addEventListener('navigate', handleNav);
+        return () => window.removeEventListener('navigate', handleNav);
+    }, [onNavigate]);
+
     return (
         <div className="space-y-6">
             {/* Top Stats Section */}

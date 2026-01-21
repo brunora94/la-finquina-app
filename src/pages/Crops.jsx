@@ -35,6 +35,7 @@ const Crops = () => {
     const [activeTab, setActiveTab] = useState('huerto');
     const [crops, setCrops] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
 
     useEffect(() => {
         const fetchCrops = async () => {
@@ -417,23 +418,42 @@ const Crops = () => {
                 </button>
             </div>
 
-            {/* Tabs */}
-            <div className="flex p-1.5 bg-nature-100/50 rounded-3xl gap-1 mx-2">
-                {CROP_TYPES.map(tab => (
+            {/* Tabs & View Toggle */}
+            <div className="flex flex-col gap-4 mx-2">
+                <div className="flex p-1.5 bg-nature-100/50 rounded-3xl gap-1">
+                    {CROP_TYPES.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={clsx(
+                                "flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-all text-sm",
+                                activeTab === tab.id
+                                    ? "bg-white text-nature-900 shadow-sm"
+                                    : "text-nature-400 hover:text-nature-600"
+                            )}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="flex p-1 bg-white border border-nature-100 rounded-2xl self-center">
                     <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={clsx(
-                            "flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-bold transition-all text-sm",
-                            activeTab === tab.id
-                                ? "bg-white text-nature-900 shadow-sm"
-                                : "text-nature-400 hover:text-nature-600"
-                        )}
+                        onClick={() => setViewMode('list')}
+                        className={clsx("px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                            viewMode === 'list' ? "bg-nature-900 text-white" : "text-nature-300")}
                     >
-                        {tab.icon}
-                        {tab.label}
+                        Lista
                     </button>
-                ))}
+                    <button
+                        onClick={() => setViewMode('grid')}
+                        className={clsx("px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                            viewMode === 'grid' ? "bg-nature-900 text-white" : "text-nature-300")}
+                    >
+                        Mapa
+                    </button>
+                </div>
             </div>
 
             {/* Garden Layout Analysis Button */}
@@ -521,182 +541,244 @@ const Crops = () => {
 
             {/* Crop Content */}
             <div className="space-y-10 px-2">
-                {Object.entries(groupedCrops).map(([row, cropsInRow]) => (
-                    <div key={row} className="space-y-4">
-                        <div className="flex items-center gap-3 ml-2">
-                            <div className="w-8 h-8 rounded-xl bg-nature-100 flex items-center justify-center text-nature-600 shadow-sm border border-nature-200/50">
-                                <LayoutGrid size={16} strokeWidth={2.5} />
+                {viewMode === 'list' ? (
+                    Object.entries(groupedCrops).map(([row, cropsInRow]) => (
+                        <div key={row} className="space-y-4">
+                            <div className="flex items-center gap-3 ml-2">
+                                <div className="w-8 h-8 rounded-xl bg-nature-100 flex items-center justify-center text-nature-600 shadow-sm border border-nature-200/50">
+                                    <LayoutGrid size={16} strokeWidth={2.5} />
+                                </div>
+                                <h3 className="font-outfit font-black text-xl text-nature-900 tracking-tight italic">
+                                    Fila <span className="text-nature-500 font-black">{row}</span>
+                                </h3>
                             </div>
-                            <h3 className="font-outfit font-black text-xl text-nature-900 tracking-tight italic">
-                                Fila <span className="text-nature-500 font-black">{row}</span>
-                            </h3>
-                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <AnimatePresence mode="popLayout">
-                                {cropsInRow.map(crop => (
-                                    <motion.div
-                                        key={crop.id}
-                                        layout
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        className="bg-white rounded-[2.5rem] border border-nature-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group"
-                                    >
-                                        {/* Photo Section */}
-                                        <div className="h-48 bg-nature-50 relative overflow-hidden group/img">
-                                            {crop.image ? (
-                                                <img src={crop.image} alt={crop.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110" />
-                                            ) : (
-                                                <div className="w-full h-full flex flex-col items-center justify-center text-nature-200">
-                                                    {crop.type === 'huerto' ? <Sprout size={48} /> : <TreeDeciduous size={48} />}
-                                                    <span className="text-[10px] font-bold uppercase tracking-widest mt-2">Sin imagen real</span>
-                                                </div>
-                                            )}
-
-                                            {/* Photo Actions */}
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity gap-2">
-                                                <label className="cursor-pointer bg-white text-nature-900 p-3 rounded-2xl shadow-lg flex items-center gap-2 font-bold text-xs hover:bg-nature-50 active:scale-95 transition-all">
-                                                    <Camera size={18} />
-                                                    {crop.image ? 'Cambiar Foto' : 'Subir Foto'}
-                                                    <input type="file" accept="image/*" onChange={(e) => handleImageUpload(crop.id, e)} className="hidden" />
-                                                </label>
-                                                {crop.image && (
-                                                    <button
-                                                        onClick={() => analyzeWithAI(crop.id)}
-                                                        disabled={analyzingId === crop.id}
-                                                        className="bg-nature-600 text-white p-3 rounded-2xl shadow-lg flex items-center gap-2 font-bold text-xs hover:bg-nature-700 active:scale-95 transition-all disabled:opacity-50"
-                                                    >
-                                                        <Bot size={18} className={analyzingId === crop.id ? 'animate-spin' : ''} />
-                                                        Analizar IA
-                                                    </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <AnimatePresence mode="popLayout">
+                                    {cropsInRow.map(crop => (
+                                        <motion.div
+                                            key={crop.id}
+                                            layout
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            className="bg-white rounded-[2.5rem] border border-nature-100 overflow-hidden shadow-sm hover:shadow-xl transition-all group"
+                                        >
+                                            {/* Photo Section */}
+                                            <div className="h-48 bg-nature-50 relative overflow-hidden group/img">
+                                                {crop.image ? (
+                                                    <img src={crop.image} alt={crop.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-110" />
+                                                ) : (
+                                                    <div className="w-full h-full flex flex-col items-center justify-center text-nature-200">
+                                                        {crop.type === 'huerto' ? <Sprout size={48} /> : <TreeDeciduous size={48} />}
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest mt-2">Sin imagen real</span>
+                                                    </div>
                                                 )}
+
+                                                {/* Photo Actions */}
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity gap-2">
+                                                    <label className="cursor-pointer bg-white text-nature-900 p-3 rounded-2xl shadow-lg flex items-center gap-2 font-bold text-xs hover:bg-nature-50 active:scale-95 transition-all">
+                                                        <Camera size={18} />
+                                                        {crop.image ? 'Cambiar Foto' : 'Subir Foto'}
+                                                        <input type="file" accept="image/*" onChange={(e) => handleImageUpload(crop.id, e)} className="hidden" />
+                                                    </label>
+                                                    {crop.image && (
+                                                        <button
+                                                            onClick={() => analyzeWithAI(crop.id)}
+                                                            disabled={analyzingId === crop.id}
+                                                            className="bg-nature-600 text-white p-3 rounded-2xl shadow-lg flex items-center gap-2 font-bold text-xs hover:bg-nature-700 active:scale-95 transition-all disabled:opacity-50"
+                                                        >
+                                                            <Bot size={18} className={analyzingId === crop.id ? 'animate-spin' : ''} />
+                                                            Analizar IA
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                <div className="absolute top-4 right-4 flex gap-2">
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => setQrValue(`${window.location.origin}?crop=${crop.id}`)}
+                                                            className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-nature-600 hover:bg-nature-50 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            title="Generar QR"
+                                                        >
+                                                            <QrCode size={16} />
+                                                        </button>
+                                                        <button onClick={() => openEditModal(crop)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-indigo-500 hover:bg-indigo-50 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Activity size={16} />
+                                                        </button>
+                                                        <button onClick={() => deleteCrop(crop.id)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-gray-400 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <X size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <div className="absolute top-4 right-4 flex gap-2">
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => setQrValue(`${window.location.origin}?crop=${crop.id}`)}
-                                                        className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-nature-600 hover:bg-nature-50 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        title="Generar QR"
+                                            {/* Info Section */}
+                                            <div className="p-6">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className="space-y-1">
+                                                        <h3 className="text-xl font-black text-nature-900 font-outfit">{crop.name}</h3>
+                                                        <p className="text-xs font-bold text-earth-300 uppercase tracking-widest">{crop.variety || 'Variedad estándar'}</p>
+                                                    </div>
+                                                    <div className={clsx("px-3 py-1 rounded-lg text-[10px] font-black uppercase",
+                                                        crop.type === 'huerto' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700')}>
+                                                        {crop.type}
+                                                    </div>
+                                                </div>
+
+                                                {/* AI Analysis Content */}
+                                                {crop.aiAnalysis && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-3xl"
                                                     >
-                                                        <QrCode size={16} />
-                                                    </button>
-                                                    <button onClick={() => openEditModal(crop)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-indigo-500 hover:bg-indigo-50 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Activity size={16} />
-                                                    </button>
-                                                    <button onClick={() => deleteCrop(crop.id)} className="p-2 bg-white/80 backdrop-blur-sm rounded-xl text-gray-400 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <X size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Info Section */}
-                                        <div className="p-6">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="space-y-1">
-                                                    <h3 className="text-xl font-black text-nature-900 font-outfit">{crop.name}</h3>
-                                                    <p className="text-xs font-bold text-earth-300 uppercase tracking-widest">{crop.variety || 'Variedad estándar'}</p>
-                                                </div>
-                                                <div className={clsx("px-3 py-1 rounded-lg text-[10px] font-black uppercase",
-                                                    crop.type === 'huerto' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700')}>
-                                                    {crop.type}
-                                                </div>
-                                            </div>
-
-                                            {/* AI Analysis Content */}
-                                            {crop.aiAnalysis && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, height: 0 }}
-                                                    animate={{ opacity: 1, height: 'auto' }}
-                                                    className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-3xl"
-                                                >
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <div className="p-1 bg-white rounded-lg shadow-sm">
-                                                            <Bot size={14} className="text-indigo-600" />
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <div className="p-1 bg-white rounded-lg shadow-sm">
+                                                                <Bot size={14} className="text-indigo-600" />
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center justify-between grow">
+                                                                <span>Diagnóstico de Élite</span>
+                                                                <span className="text-[7px] text-indigo-400">v6.0</span>
+                                                            </span>
                                                         </div>
-                                                        <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center justify-between grow">
-                                                            <span>Diagnóstico de Élite</span>
-                                                            <span className="text-[7px] text-indigo-400">v6.0</span>
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-indigo-900 leading-relaxed font-medium">{crop.aiAnalysis.diagnosis}</p>
-                                                    <div className="mt-3 pt-3 border-t border-indigo-100 flex justify-between items-center">
-                                                        <span className="text-[9px] font-bold text-indigo-400">{crop.aiAnalysis.timestamp}</span>
-                                                        <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">{crop.aiAnalysis.action}</span>
-                                                    </div>
-                                                </motion.div>
-                                            )}
-
-                                            {/* Main Stats */}
-                                            <div className="grid grid-cols-2 gap-3 mb-3">
-                                                <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
-                                                    <div className="flex items-center gap-1.5 text-earth-400">
-                                                        <Calendar size={12} />
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider font-outfit">Iniciado</span>
-                                                    </div>
-                                                    <span className="text-sm font-black text-nature-800 tracking-tighter">{crop.plantedDate}</span>
-                                                </div>
-                                                <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
-                                                    <div className="flex items-center gap-1.5 text-earth-400">
-                                                        <Activity size={12} />
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider font-outfit">Vitalidad</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={clsx("w-2 h-2 rounded-full", HEALTH_LEVELS.find(h => h.id === crop.health)?.color)} />
-                                                        <span className="text-sm font-black text-nature-800 capitalize tracking-tighter">{crop.health}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
-                                                    <div className="flex items-center gap-1.5 text-earth-400">
-                                                        <LayoutGrid size={12} />
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider font-outfit">Cantidad</span>
-                                                    </div>
-                                                    <span className="text-sm font-black text-nature-800 tracking-tighter">{crop.quantity || 1} {crop.quantity === 1 ? 'planta' : 'plantas'}</span>
-                                                </div>
-                                            </div>
-
-                                            {crop.harvestDate && (
-                                                <div className="bg-green-600 text-white rounded-2xl p-4 mb-4 shadow-lg shadow-green-100 flex items-center justify-between group/harvest">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-white/20 rounded-xl">
-                                                            <Sprout size={20} className="text-white" />
+                                                        <p className="text-xs text-indigo-900 leading-relaxed font-medium">{crop.aiAnalysis.diagnosis}</p>
+                                                        <div className="mt-3 pt-3 border-t border-indigo-100 flex justify-between items-center">
+                                                            <span className="text-[9px] font-bold text-indigo-400">{crop.aiAnalysis.timestamp}</span>
+                                                            <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">{crop.aiAnalysis.action}</span>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Cosecha Estimada</p>
-                                                            <p className="text-lg font-black font-outfit leading-none mt-0.5">{crop.harvestDate}</p>
+                                                    </motion.div>
+                                                )}
+
+                                                {/* Main Stats */}
+                                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                                    <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
+                                                        <div className="flex items-center gap-1.5 text-earth-400">
+                                                            <Calendar size={12} />
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider font-outfit">Iniciado</span>
+                                                        </div>
+                                                        <span className="text-sm font-black text-nature-800 tracking-tighter">{crop.plantedDate}</span>
+                                                    </div>
+                                                    <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
+                                                        <div className="flex items-center gap-1.5 text-earth-400">
+                                                            <Activity size={12} />
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider font-outfit">Vitalidad</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={clsx("w-2 h-2 rounded-full", HEALTH_LEVELS.find(h => h.id === crop.health)?.color)} />
+                                                            <span className="text-sm font-black text-nature-800 capitalize tracking-tighter">{crop.health}</span>
                                                         </div>
                                                     </div>
-                                                    <button
-                                                        onClick={() => setHarvestingCrop(crop)}
-                                                        className="text-[10px] font-black bg-white text-green-700 px-3 py-2 rounded-xl uppercase hover:bg-green-50 transition-colors shadow-sm"
-                                                    >
-                                                        Recoger
-                                                    </button>
+                                                    <div className="bg-nature-50/50 rounded-2xl p-3 flex flex-col gap-1 border border-nature-100/50">
+                                                        <div className="flex items-center gap-1.5 text-earth-400">
+                                                            <LayoutGrid size={12} />
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider font-outfit">Cantidad</span>
+                                                        </div>
+                                                        <span className="text-sm font-black text-nature-800 tracking-tighter">{crop.quantity || 1} {crop.quantity === 1 ? 'planta' : 'plantas'}</span>
+                                                    </div>
                                                 </div>
-                                            )}
 
-                                            {/* Companion / Pruning Footer */}
-                                            <div className="flex items-center justify-between text-xs px-2">
-                                                <div className="flex items-center gap-2 text-earth-400 font-bold uppercase tracking-tighter text-[10px]">
-                                                    <Droplets size={14} className="text-blue-400" />
-                                                    {crop.irrigation}
-                                                </div>
-                                                {crop.type === 'frutal' && (
+                                                {crop.harvestDate && (
+                                                    <div className="bg-green-600 text-white rounded-2xl p-4 mb-4 shadow-lg shadow-green-100 flex items-center justify-between group/harvest">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-white/20 rounded-xl">
+                                                                <Sprout size={20} className="text-white" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Cosecha Estimada</p>
+                                                                <p className="text-lg font-black font-outfit leading-none mt-0.5">{crop.harvestDate}</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setHarvestingCrop(crop)}
+                                                            className="text-[10px] font-black bg-white text-green-700 px-3 py-2 rounded-xl uppercase hover:bg-green-50 transition-colors shadow-sm"
+                                                        >
+                                                            Recoger
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Companion / Pruning Footer */}
+                                                <div className="flex items-center justify-between text-xs px-2">
                                                     <div className="flex items-center gap-2 text-earth-400 font-bold uppercase tracking-tighter text-[10px]">
-                                                        <Scissors size={14} className="text-orange-400" />
-                                                        Poda: {crop.lastPruning || 'N/A'}
+                                                        <Droplets size={14} className="text-blue-400" />
+                                                        {crop.irrigation}
                                                     </div>
-                                                )}
+                                                    {crop.type === 'frutal' && (
+                                                        <div className="flex items-center gap-2 text-earth-400 font-bold uppercase tracking-tighter text-[10px]">
+                                                            <Scissors size={14} className="text-orange-400" />
+                                                            Poda: {crop.lastPruning || 'N/A'}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </AnimatePresence>
+                                        </motion.div>
+                                    ))}
+                                </AnimatePresence>
+                            </div>
                         </div>
+                    ))
+                ) : (
+                    /* GRID MAPPER VIEW */
+                    <div className="bg-white rounded-[3rem] p-8 border border-nature-100 shadow-inner overflow-hidden relative">
+                        <div className="flex justify-between items-center mb-10">
+                            <div>
+                                <h4 className="font-black text-nature-900 font-outfit uppercase tracking-tight text-lg">Mapa de Producción</h4>
+                                <p className="text-[10px] font-bold text-earth-300 uppercase tracking-widest">Escaneando vitalidad de las filas...</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500" /><span className="text-[8px] font-bold text-earth-300 uppercase">Sano</span></div>
+                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-400" /><span className="text-[8px] font-bold text-earth-300 uppercase">Crítico</span></div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-8 relative z-10">
+                            {Object.entries(groupedCrops).sort(([a], [b]) => a - b).map(([row, items]) => (
+                                <div key={row} className="flex items-center gap-6">
+                                    <div className="w-12 h-12 bg-nature-50 rounded-2xl flex items-center justify-center border border-nature-100 shrink-0">
+                                        <span className="font-black text-nature-900 text-lg font-outfit italic">F{row}</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-4 grow">
+                                        {items.map(item => (
+                                            <motion.button
+                                                key={item.id}
+                                                whileHover={{ scale: 1.05, y: -5 }}
+                                                onClick={() => openEditModal(item)}
+                                                className={clsx(
+                                                    "w-20 h-20 rounded-3xl border-4 relative group/node overflow-hidden transition-all duration-300 shadow-sm",
+                                                    item.health === 'excelente' ? "bg-green-50 border-green-200" :
+                                                        item.health === 'enfermo' ? "bg-red-50 border-red-200" :
+                                                            "bg-blue-50 border-blue-200"
+                                                )}
+                                            >
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
+                                                    <div className={clsx("w-3 h-3 rounded-full mb-1 animate-pulse",
+                                                        item.health === 'excelente' ? "bg-green-500" :
+                                                            item.health === 'enfermo' ? "bg-red-500" : "bg-blue-500")}
+                                                    />
+                                                    <span className="text-[8px] font-black text-nature-900 uppercase leading-none text-center truncate w-full">
+                                                        {item.name.split(' ')[0]}
+                                                    </span>
+                                                </div>
+                                                {/* Mini Tooltip overlay on hover */}
+                                                <div className="absolute inset-0 bg-nature-900/90 flex items-center justify-center opacity-0 group-hover/node:opacity-100 transition-opacity p-1">
+                                                    <p className="text-[7px] font-bold text-white text-center uppercase tracking-tighter">
+                                                        {item.quantity} p.<br />{item.variety || 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </motion.button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Background Map Grid Decoration */}
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                            style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+                        />
                     </div>
-                ))}
+                )}
 
                 {filteredCrops.length === 0 && (
                     <div className="col-span-full py-20 text-center border-2 border-dashed border-nature-100 rounded-[3rem]">
@@ -819,7 +901,7 @@ const Crops = () => {
                                                 onClick={() => setFormData({ ...formData, health: h.id })}
                                                 className={clsx(
                                                     "flex-1 py-3 rounded-2xl text-[10px] font-black uppercase transition-all border-2",
-                                                    formData.health === h.id ? `${h.color} text - white border - transparent shadow - lg` : "bg-gray-50 text-gray-400 border-gray-100"
+                                                    formData.health === h.id ? `${h.color} text-white border-transparent shadow-lg` : "bg-gray-50 text-gray-400 border-gray-100"
                                                 )}
                                             >
                                                 {h.label}
