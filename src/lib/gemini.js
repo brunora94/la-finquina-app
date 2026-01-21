@@ -11,37 +11,49 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     }
 
     const prompt = `Actúa como agrónomo experto. Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
-
     const base64Data = imageBuffer.split(",")[1];
 
-    try {
-        // CONEXIÓN v11 (Gemini 1.5 Flash + v1beta + Header Auth)
-        // Usamos v1beta porque es la ruta que llegó a conectar en la v9
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
+    const models = ["gemini-1.5-flash-8b", "gemini-1.5-pro", "gemini-2.0-flash-exp"];
+    let lastError = null;
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }]
-                }]
-            })
-        });
+    for (const modelName of models) {
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`v11_Error_${response.status}_${errorData.error?.message || 'Unknown'}`);
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }, { inline_data: { mime_type: "image/jpeg", data: base64Data } }]
+                    }]
+                })
+            });
+
+            if (response.status === 429) {
+                throw new Error("CUOTA_EXCEDIDA: Google está saturado, espera 1 minuto.");
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`404_${modelName}: ${errorData.error?.message || 'Not Found'}`);
+            }
+
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            const jsonStr = text.replace(/```json|```/g, "").trim();
+            return JSON.parse(jsonStr);
+
+        } catch (error) {
+            console.warn(`Fallo con ${modelName}:`, error.message);
+            lastError = error;
+            if (error.message.includes("CUOTA_EXCEDIDA")) break;
         }
-
-        const data = await response.json();
-        const text = data.candidates[0].content.parts[0].text;
-        const jsonStr = text.replace(/```json|```/g, "").trim();
-        return JSON.parse(jsonStr);
-    } catch (error) {
-        throw new Error(`(v11) ${error.message}`);
     }
+
+    throw new Error(`(v12) ${lastError.message}`);
 };
+
