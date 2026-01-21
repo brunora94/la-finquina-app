@@ -1,46 +1,9 @@
-// El modelo más robusto y compatible con JSON en la actualidad
-const STABLE_MODELS = ["gemini-1.5-flash"];
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * Utilidad robusta para llamar a Gemini con reintentos automáticos
+ * Motor de IA de La Finquina usando la librería oficial de Google.
+ * Esta versión es la más robusta y compatible con todos los ambientes.
  */
-const fetchGemini = async (modelName, payload, apiKey) => {
-    // v1beta es el que mejor soporta response_mime_type: "application/json"
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
-
-    // Forzamos que la IA siempre devuelva JSON si el modelo lo soporta
-    const finalPayload = {
-        ...payload,
-        generationConfig: {
-            ...payload.generationConfig,
-            response_mime_type: "application/json"
-        }
-    };
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify(finalPayload)
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        const msg = errorData.error?.message || `Error ${response.status}`;
-        throw { status: response.status, message: msg };
-    }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!text) throw new Error("La IA ha devuelto una respuesta vacía.");
-
-    // Limpieza de posibles markdowns
-    const cleanJson = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(cleanJson);
-};
 
 export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     const rawKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -50,32 +13,31 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
         throw new Error("API_KEY_MISSING");
     }
 
-    const base64Data = imageBuffer.split(",")[1];
-    const payload = {
-        contents: [{
-            parts: [
-                { text: `Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}` },
-                { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-            ]
-        }]
-    };
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
 
-    let lastError = null;
-    for (const model of STABLE_MODELS) {
-        try {
-            console.log(`Intentando análisis con ${model}...`);
-            return await fetchGemini(model, payload, apiKey);
-        } catch (error) {
-            console.error(`Fallo con ${model}:`, error.message);
-            lastError = error;
-            // Si es límite de cuota (429) o modelo no encontrado (404), probamos el siguiente
-            if (error.status === 429 || error.status === 404) continue;
-            // Para otros errores, también intentamos con el siguiente modelo para máxima resiliencia
-            continue;
-        }
+        // El modelo flash es el más rápido y estable para visión
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            generationConfig: { responseMimeType: "application/json" }
+        });
+
+        const base64Data = imageBuffer.split(",")[1];
+        const prompt = `Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
+
+        const result = await model.generateContent([
+            prompt,
+            { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+        ]);
+
+        const response = await result.response;
+        const text = response.text();
+        return JSON.parse(text);
+
+    } catch (error) {
+        console.error("Error crítico en análisis de foto:", error);
+        throw new Error(error.message || "Error al conectar con la IA de Google");
     }
-
-    throw new Error(lastError?.message || "No se pudo conectar con ningún modelo de IA de Google");
 };
 
 export const analyzeGardenLayout = async (allCrops) => {
@@ -86,30 +48,28 @@ export const analyzeGardenLayout = async (allCrops) => {
         throw new Error("API_KEY_MISSING");
     }
 
-    const layout = allCrops.reduce((acc, crop) => {
-        const row = crop.row_number || 1;
-        if (!acc[row]) acc[row] = [];
-        acc[row].push(crop.name);
-        return acc;
-    }, {});
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+            model: "gemini-1.5-flash",
+            generationConfig: { responseMimeType: "application/json" }
+        });
 
-    const prompt = `
-    Actúa como un experto agrónomo. Analiza este diseño de huerto: ${JSON.stringify(layout)}.
-    IMPORTANTE: Devuelve un JSON con: {"friendships": [], "warnings": [], "tips": []}
-    `;
+        const layout = allCrops.reduce((acc, crop) => {
+            const row = crop.row_number || 1;
+            if (!acc[row]) acc[row] = [];
+            acc[row].push(crop.name);
+            return acc;
+        }, {});
 
-    let lastError = null;
-    for (const model of STABLE_MODELS) {
-        try {
-            return await fetchGemini(model, { contents: [{ parts: [{ text: prompt }] }] }, apiKey);
-        } catch (error) {
-            lastError = error;
-            if (error.status === 429 || error.status === 404) continue;
-            continue;
-        }
+        const prompt = `Actúa como agrónomo. Analiza este huerto: ${JSON.stringify(layout)}. Devuelve un JSON con: {"friendships": [], "warnings": [], "tips": []}`;
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return JSON.parse(response.text());
+
+    } catch (error) {
+        console.error("Error crítico en análisis de diseño:", error);
+        throw new Error(error.message || "Error al analizar el diseño del huerto");
     }
-
-    throw new Error(lastError?.message || "No se pudo analizar el diseño del huerto");
 };
-
-
