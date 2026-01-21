@@ -205,9 +205,9 @@ const Crops = () => {
         } catch (error) {
             console.error("Error en análisis IA:", error);
             if (error.message === 'API_KEY_MISSING') {
-                alert("⚠️ Falta la API Key de Gemini. Asegúrate de haberla añadido a Vercel como 'VITE_GEMINI_API_KEY' y haber hecho un 'Redeploy'.");
+                alert("⚠️ ¡Falta tu API Key! Ve a Vercel, añade 'VITE_GEMINI_API_KEY' en Environment Variables y haz un 'Redeploy' (Deployments -> Redploy).");
             } else {
-                alert("❌ " + (error.message || "Error al conectar con la IA de Google"));
+                alert("❌ Problema con Google Gemini: " + (error.message || "Error desconocido") + ". Prueba a recargar la página.");
             }
         } finally {
             setAnalyzingId(null);

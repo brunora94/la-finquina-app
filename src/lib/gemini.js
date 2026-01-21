@@ -87,7 +87,7 @@ export const analyzeGardenLayout = async (allCrops) => {
     }
 
     const layout = allCrops.reduce((acc, crop) => {
-        const row = crop.rowNumber || 1;
+        const row = crop.row_number || 1;
         if (!acc[row]) acc[row] = [];
         acc[row].push(crop.name);
         return acc;
