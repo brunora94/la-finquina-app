@@ -16,6 +16,8 @@ import {
 import VoiceInput from '../components/VoiceInput';
 import clsx from 'clsx';
 import { supabase } from '../lib/supabase';
+import { getAgendaSuggestions } from '../lib/agenda';
+import { Lightbulb, Check, Sparkles } from 'lucide-react';
 
 const CATEGORIES = [
     { id: 'mantenimiento', label: 'Mantenimiento', icon: <Settings size={14} />, color: 'bg-orange-100 text-orange-700' },
@@ -33,44 +35,38 @@ const FREQUENCIES = [
 
 const Tasks = () => {
     const [tasks, setTasks] = useState([]);
+    const [crops, setCrops] = useState([]);
+    const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Initial fetch and Migration from Supabase
     useEffect(() => {
-        const fetchTasks = async () => {
-            const { data, error } = await supabase
+        const fetchInitialData = async () => {
+            // Fetch Tasks
+            const { data: taskData, error: taskError } = await supabase
                 .from('tasks')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (!error) {
-                if (data && data.length > 0) {
-                    setTasks(data);
-                } else {
-                    // MIGRATION: If cloud is empty, check local storage
-                    const saved = localStorage.getItem('finquina_tasks');
-                    if (saved) {
-                        const localTasks = JSON.parse(saved);
-                        if (localTasks.length > 0) {
-                            console.log('Migrando tareas a la nube...');
-                            // Upload local tasks to Supabase (without IDs so they get new ones)
-                            const tasksToUpload = localTasks.map(({ id, ...rest }) => rest);
-                            const { data: uploadedData } = await supabase
-                                .from('tasks')
-                                .insert(tasksToUpload)
-                                .select();
-                            if (uploadedData) setTasks(uploadedData);
-                        }
-                    }
-                }
-            } else {
-                const saved = localStorage.getItem('finquina_tasks');
-                if (saved) setTasks(JSON.parse(saved));
+            // Fetch Crops for suggestions
+            const { data: cropData } = await supabase
+                .from('crops')
+                .select('*');
+
+            if (!taskError && taskData) {
+                setTasks(taskData);
             }
+
+            if (cropData) {
+                setCrops(cropData);
+                const sug = getAgendaSuggestions(cropData);
+                setSuggestions(sug);
+            }
+
             setLoading(false);
         };
 
-        fetchTasks();
+        fetchInitialData();
     }, []);
 
     // Also keep localStorage updated as a backup
@@ -152,6 +148,33 @@ const Tasks = () => {
             .eq('id', id);
     };
 
+    const addFromSuggestion = async (suggestion) => {
+        const newTask = {
+            text: suggestion.text,
+            category: suggestion.category,
+            section: suggestion.section,
+            frequency: 'unica',
+            ai: true,
+            completed: false,
+            created_at: new Date().toISOString()
+        };
+
+        // Optimistic UI
+        const tempId = Date.now();
+        setTasks([{ id: tempId, ...newTask }, ...tasks]);
+        setSuggestions(suggestions.filter(s => s.id !== suggestion.id));
+
+        // Sync
+        const { data, error } = await supabase
+            .from('tasks')
+            .insert([newTask])
+            .select();
+
+        if (!error && data) {
+            setTasks(prev => prev.map(t => t.id === tempId ? data[0] : t));
+        }
+    };
+
     return (
         <div className="space-y-6 pb-24 relative">
             <div className="flex justify-between items-center">
@@ -168,6 +191,51 @@ const Tasks = () => {
             <section className="bg-white p-4 rounded-3xl shadow-sm border border-nature-100">
                 <VoiceInput onSpeechDetected={openFormWithText} />
             </section>
+
+            {/* AI Suggestions Section */}
+            {suggestions.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                        <Sparkles size={18} className="text-indigo-500" />
+                        <h3 className="text-sm font-black text-indigo-900 uppercase tracking-widest font-outfit">Sugerencias de La Finquina</h3>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-4 px-1 snap-x no-scrollbar">
+                        {suggestions.map(sug => (
+                            <motion.div
+                                key={sug.id}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="min-w-[280px] bg-gradient-to-br from-indigo-600 to-blue-700 p-5 rounded-[2rem] text-white shadow-xl shadow-indigo-100 snap-center relative overflow-hidden group"
+                            >
+                                <div className="absolute top-0 right-0 p-4 opacity-10 transform scale-150 rotate-12">
+                                    <Bot size={60} />
+                                </div>
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
+                                            {sug.category}
+                                        </div>
+                                        <button
+                                            onClick={() => addFromSuggestion(sug)}
+                                            className="bg-white text-indigo-600 p-2 rounded-xl hover:bg-indigo-50 active:scale-90 transition-all shadow-lg"
+                                        >
+                                            <Plus size={18} />
+                                        </button>
+                                    </div>
+                                    <h4 className="text-lg font-black leading-tight mb-2 pr-8">{sug.text}</h4>
+                                    <p className="text-[10px] text-indigo-100 font-medium mb-4 italic opacity-90 leading-relaxed">
+                                        "{sug.reason}"
+                                    </p>
+                                    <div className="flex items-center gap-2 text-[10px] font-black text-indigo-200 uppercase tracking-widest">
+                                        <MapPin size={10} />
+                                        {sug.section}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Task List */}
             <div className="space-y-3">
