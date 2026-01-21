@@ -7,13 +7,13 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     const apiKey = rawKey ? rawKey.trim() : null;
 
     if (!apiKey || apiKey === 'tu_llave_de_google_gemini') {
-        throw new Error("API_KEY_MISSING");
+        throw new Error("Falta la configuración de la IA (API Key)");
     }
 
-    const prompt = `Actúa como agrónomo experto. Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
+    const prompt = `Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
     const base64Data = imageBuffer.split(",")[1];
 
-    const models = ["gemini-1.5-flash-8b", "gemini-1.5-pro", "gemini-2.0-flash-exp"];
+    const models = ["gemini-1.5-flash-8b", "gemini-1.5-flash", "gemini-1.5-pro"];
     let lastError = null;
 
     for (const modelName of models) {
@@ -34,12 +34,12 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
             });
 
             if (response.status === 429) {
-                throw new Error("CUOTA_EXCEDIDA: Google está saturado, espera 1 minuto.");
+                throw new Error("Límite de uso alcanzado. Por favor, espera un minuto y vuelve a intentarlo.");
             }
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(`404_${modelName}: ${errorData.error?.message || 'Not Found'}`);
+                throw new Error(errorData.error?.message || "No se pudo conectar con el modelo");
             }
 
             const data = await response.json();
@@ -48,12 +48,12 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
             return JSON.parse(jsonStr);
 
         } catch (error) {
-            console.warn(`Fallo con ${modelName}:`, error.message);
             lastError = error;
-            if (error.message.includes("CUOTA_EXCEDIDA")) break;
+            if (error.message.includes("espera un minuto")) break;
         }
     }
 
-    throw new Error(`(v12) ${lastError.message}`);
+    throw lastError;
 };
+
 
