@@ -166,18 +166,21 @@ const Crops = () => {
                     let daysToHarvest = isFrutal ? 180 : 90;
 
                     const nameLower = c.name.toLowerCase();
-                    if (nameLower.includes('tomate')) daysToHarvest = 80;
-                    else if (nameLower.includes('lechuga')) daysToHarvest = 45;
-                    else if (nameLower.includes('pimiento')) daysToHarvest = 100;
-                    else if (nameLower.includes('manzano')) daysToHarvest = 150;
-                    else if (nameLower.includes('pera')) daysToHarvest = 140;
+                    if (nameLower.includes('tomate')) daysToHarvest = 85;
+                    else if (nameLower.includes('lechuga')) daysToHarvest = 50;
+                    else if (nameLower.includes('pimiento')) daysToHarvest = 110;
+                    else if (nameLower.includes('manzano')) daysToHarvest = 160;
+                    else if (nameLower.includes('pera')) daysToHarvest = 150;
+                    else if (nameLower.includes('brócoli') || nameLower.includes('brécol')) daysToHarvest = 95;
+                    else if (nameLower.includes('patata')) daysToHarvest = 120;
+                    else if (nameLower.includes('calabacín')) daysToHarvest = 55;
 
                     const estDate = new Date(plantedDate.getTime() + (daysToHarvest * 24 * 60 * 60 * 1000));
                     const estDateStr = estDate.toISOString().split('T')[0];
 
                     const diagnostics = isFrutal
                         ? `Análisis de follaje: ÉXITO. Se observa un vigor del 92%. Basado en el estado de brotación y fecha de plantación, la IA estima la cosecha óptima para el ${estDateStr}. Recomendación: Revisar riego y aplicar abonado de floración.`
-                        : `Análisis de crecimiento: VIGOROSO. Se detecta ligera clorosis (falta de Nitrógeno). El desarrollo foliar sugiere una maduración en aproximadamente ${daysToHarvest - 15} días. Cosecha estimada por IA: ${estDateStr}.`;
+                        : `Análisis de crecimiento: VIGOROSO. Se detecta un desarrollo foliar saludable en el ${c.name}. La IA estima que alcanzará su punto óptimo de maduración el ${estDateStr}. Recomendación: Mantener humedad constante y vigilar posibles plagas de temporada.`;
 
                     updatedCrop = {
                         ...c,
