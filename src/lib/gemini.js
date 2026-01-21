@@ -88,12 +88,18 @@ const callGemini = async (payload, apiKey) => {
 const simulateAI = (payload) => {
     const text = JSON.stringify(payload);
     if (text.includes("Analiza esta planta")) {
+        // Extraemos la fecha de plantación del prompt para una simulación realista
+        const dateMatch = text.match(/plantó el: ([\d-]+)/);
+        const plantedDate = dateMatch ? new Date(dateMatch[1]) : new Date();
+        const daysToHarvest = 45; // Ciclo medio simulación
+        const harvestDate = new Date(plantedDate.getTime() + daysToHarvest * 24 * 60 * 60 * 1000);
+
         return {
             status: "Éxito",
-            diagnosis: "La planta parece estar en buen estado general. Sigue con el riego habitual y vigila las hojas para detectar cambios.",
-            action: "Seguimiento",
-            estimatedDaysToHarvest: 15,
-            estimatedHarvestDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            diagnosis: "La planta muestra un desarrollo óptimo y vigoroso para su tiempo de vida. El follaje está sano y no se observan signos de estrés hídrico ni plagas.",
+            action: "Mantenimiento",
+            estimatedDaysToHarvest: daysToHarvest,
+            estimatedHarvestDate: harvestDate.toISOString().split('T')[0]
         };
     }
     return {
@@ -108,10 +114,19 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
 
     const base64Data = imageBuffer.split(",")[1];
+    const prompt = `Analiza esta planta de ${cropInfo.name}. 
+    DATOS CLAVE:
+    - Se plantó el: ${cropInfo.plantedDate || 'fecha desconocida'}
+    - Estado visual: Adjunto en la imagen.
+    
+    TAREA:
+    Estima la fecha de cosecha basándote en la fecha de plantación y lo que ves en la foto (estado de madurez, tamaño, salud).
+    Responde ÚNICAMENTE con un JSON: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
+
     const payload = {
         contents: [{
             parts: [
-                { text: `Analiza esta planta de ${cropInfo.name}. Responde ÚNICAMENTE con un JSON: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}` },
+                { text: prompt },
                 { inline_data: { mime_type: "image/jpeg", data: base64Data } }
             ]
         }]
