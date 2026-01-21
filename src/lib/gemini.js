@@ -13,12 +13,13 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     const prompt = `Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
     const base64Data = imageBuffer.split(",")[1];
 
-    // Lista de modelos ordenada por robustez y disponibilidad en v1beta
-    const models = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-2.0-flash-exp", "gemini-1.5-pro-latest"];
+    // Nombres estándar de modelos para la API v1beta
+    const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b"];
     let lastError = null;
 
     for (const modelName of models) {
         try {
+            console.log(`Intentando análisis con ${modelName}...`);
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 
             const response = await fetch(url, {
@@ -40,8 +41,14 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
                 })
             });
 
+            if (response.status === 404) {
+                console.warn(`Modelo ${modelName} no disponible (404). Saltando...`);
+                continue;
+            }
+
             if (response.status === 429) {
-                throw new Error("Límite de uso alcanzado. Reintentando con otro modelo...");
+                console.warn(`Límite de cuota en ${modelName}. Probando siguiente...`);
+                continue;
             }
 
             if (!response.ok) {
@@ -50,23 +57,22 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
             }
 
             const data = await response.json();
-            if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                throw new Error("Respuesta de IA vacía");
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!text) {
+                throw new Error("La IA no devolvió ninguna predicción");
             }
 
-            const text = data.candidates[0].content.parts[0].text;
             const jsonStr = text.replace(/```json|```/g, "").trim();
             return JSON.parse(jsonStr);
 
         } catch (error) {
-            console.warn(`Fallo con modelo ${modelName}:`, error.message);
             lastError = error;
-            // Si es un error de cuota (429), seguimos al siguiente modelo
-            continue;
+            console.error(`Error con ${modelName}:`, error.message);
         }
     }
 
-    throw lastError || new Error("No se pudo conectar con ningún modelo de IA");
+    throw lastError || new Error("No se ha podido conectar con los servidores de Google");
 };
 
 export const analyzeGardenLayout = async (allCrops) => {
