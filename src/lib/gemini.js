@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * Motor de IA de La Finquina usando la librería oficial de Google.
- * Esta versión es la más robusta y compatible con todos los ambientes.
+ * Motor de IA de La Finquina usando el endpoint estable de Google.
+ * Eliminamos responseMimeType para maximizar compatibilidad con todas las regiones.
  */
 
 export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
@@ -16,14 +16,13 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // El modelo flash es el más rápido y estable para visión
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        // Usamos gemini-1.5-flash que es el estándar más compatible
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const base64Data = imageBuffer.split(",")[1];
-        const prompt = `Analiza esta planta de ${cropInfo.name}. Dame un JSON con: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
+        const prompt = `Analiza esta planta de ${cropInfo.name}. 
+        IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON (sin markdown, sin explicaciones) que tenga este formato:
+        {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
 
         const result = await model.generateContent([
             prompt,
@@ -32,11 +31,14 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
 
         const response = await result.response;
         const text = response.text();
-        return JSON.parse(text);
+
+        // Limpieza robusta del JSON por si la IA añade markdown
+        const cleanJson = text.replace(/```json|```/g, "").trim();
+        return JSON.parse(cleanJson);
 
     } catch (error) {
-        console.error("Error crítico en análisis de foto:", error);
-        throw new Error(error.message || "Error al conectar con la IA de Google");
+        console.error("Error en análisis de foto:", error);
+        throw new Error("No se pudo conectar con la IA. Verifica que tu API Key sea correcta y tenga permisos para Gemini 1.5 Flash.");
     }
 };
 
@@ -50,10 +52,7 @@ export const analyzeGardenLayout = async (allCrops) => {
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
-            generationConfig: { responseMimeType: "application/json" }
-        });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const layout = allCrops.reduce((acc, crop) => {
             const row = crop.row_number || 1;
@@ -62,14 +61,19 @@ export const analyzeGardenLayout = async (allCrops) => {
             return acc;
         }, {});
 
-        const prompt = `Actúa como agrónomo. Analiza este huerto: ${JSON.stringify(layout)}. Devuelve un JSON con: {"friendships": [], "warnings": [], "tips": []}`;
+        const prompt = `Actúa como agrónomo. Analiza este huerto: ${JSON.stringify(layout)}. 
+        IMPORTANTE: Responde ÚNICAMENTE con un objeto JSON (sin markdown) que tenga este formato:
+        {"friendships": [], "warnings": [], "tips": []}`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        return JSON.parse(response.text());
+        const text = response.text();
+
+        const cleanJson = text.replace(/```json|```/g, "").trim();
+        return JSON.parse(cleanJson);
 
     } catch (error) {
-        console.error("Error crítico en análisis de diseño:", error);
-        throw new Error(error.message || "Error al analizar el diseño del huerto");
+        console.error("Error en análisis de diseño:", error);
+        throw new Error("Error al analizar el diseño del huerto con la IA.");
     }
 };
