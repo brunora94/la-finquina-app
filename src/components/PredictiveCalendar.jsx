@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar as CalendarIcon, Star, Moon, Cloud, ChevronRight, Sprout, Scissors, Droplets } from 'lucide-react';
+import { Calendar as CalendarIcon, Star, Moon, Cloud, ChevronRight, Sprout, Scissors, Droplets, Sparkles } from 'lucide-react';
 import clsx from 'clsx';
 
 const PredictiveCalendar = ({ onNavigate }) => {
