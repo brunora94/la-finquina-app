@@ -3,24 +3,27 @@ import { Home, Sprout, ClipboardList, Package, Trophy, Wrench } from 'lucide-rea
 import clsx from 'clsx';
 import { FARM_CONFIG } from '../constants';
 
-const NavItem = ({ icon: Icon, label, active, onClick }) => (
-    <button
-        onClick={onClick}
-        className={clsx(
-            "flex flex-col items-center justify-center w-full p-2 transition-all duration-200",
-            active
-                ? "text-nature-600 scale-110"
-                : "text-earth-400 hover:text-nature-500"
-        )}
-    >
-        {typeof Icon === 'function' ? (
-            <Icon size={24} strokeWidth={active ? 2.5 : 2} />
-        ) : (
-            React.cloneElement(Icon, { size: 24, strokeWidth: active ? 2.5 : 2 })
-        )}
-        <span className="text-xs font-medium mt-1">{label}</span>
-    </button>
-);
+const NavItem = ({ icon: Icon, label, active, onClick }) => {
+    if (!Icon) return null;
+    return (
+        <button
+            onClick={onClick}
+            className={clsx(
+                "flex flex-col items-center justify-center w-full p-2 transition-all duration-200",
+                active
+                    ? "text-nature-600 scale-110"
+                    : "text-earth-400 hover:text-nature-500"
+            )}
+        >
+            {typeof Icon === 'function' ? (
+                <Icon size={24} strokeWidth={active ? 2.5 : 2} />
+            ) : (
+                Icon
+            )}
+            <span className="text-xs font-medium mt-1">{label}</span>
+        </button>
+    );
+};
 
 const Layout = ({ children, currentPage, onNavigate }) => {
     return (
