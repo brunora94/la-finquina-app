@@ -39,7 +39,7 @@ const ButlerChat = () => {
                 date: new Date().toLocaleDateString()
             };
 
-            const response = await askButler(userMsg, context);
+            const response = await askButler(userMsg, context, chat);
             setChat(prev => [...prev, { role: 'assistant', text: response.answer }]);
         } catch (error) {
             setChat(prev => [...prev, { role: 'assistant', text: 'Lo siento, he tenido un pequeño lapsus. ¿Puedes repetir?' }]);

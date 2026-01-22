@@ -112,8 +112,22 @@ const simulateAI = (payload) => {
     }
 
     if (text.includes("Eres el Mayordomo")) {
+        const lastUserMessage = text.split('USUARIO: "')[1]?.split('"')[0] || "";
+
+        let dynamicAnswer = "Basado en tu finca, te recomiendo vigilar la humedad. ¿En qué más puedo ayudarte?";
+
+        if (lastUserMessage.toLowerCase().includes("hola")) {
+            dynamicAnswer = "¡Hola! Soy el Mayordomo de La Finquina. Todo parece estar en orden hoy. ¿Tienes alguna pregunta sobre tus cultivos?";
+        } else if (lastUserMessage.toLowerCase().includes("cosecha") || lastUserMessage.toLowerCase().includes("cuándo")) {
+            dynamicAnswer = "He revisado tus cultivos. Tus tomates están casi listos, calculo que en unos 10 días podrás empezar la cosecha. ¿Quieres que prepare un recordatorio?";
+        } else if (lastUserMessage.toLowerCase().includes("tarea") || lastUserMessage.toLowerCase().includes("hacer")) {
+            dynamicAnswer = "Tienes un par de tareas pendientes, principalmente el riego de la Fila 2. El clima dice que no lloverá en 48 horas, así que es buen momento.";
+        } else if (lastUserMessage.toLowerCase().includes("taller") || lastUserMessage.toLowerCase().includes("tractor")) {
+            dynamicAnswer = "He comprobado el estado del tractor en el Taller. Le toca revisión en 20 horas de uso. ¿Quieres ver los detalles?";
+        }
+
         return {
-            answer: "Basado en tu finca, te recomiendo vigilar la humedad de la Fila 1. El clima detecta calor mañana y tus tomates están en semana 3 de crecimiento. ¿Quieres que añada un riego a las tareas?"
+            answer: dynamicAnswer
         };
     }
 
@@ -208,7 +222,7 @@ export const identifySpecies = async (imageBuffer) => {
         return simulateAI({ contents: [{ parts: [{ text: "Identifica la especie" }] }] });
     }
 };
-export const askButler = async (userMessage, farmContext) => {
+export const askButler = async (userMessage, farmContext, history = []) => {
     try {
         const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
         if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
@@ -217,11 +231,15 @@ export const askButler = async (userMessage, farmContext) => {
         CONTEXTO DE LA FINCA:
         ${JSON.stringify(farmContext)}
         
+        HISTORIAL DE CONVERSACIÓN:
+        ${JSON.stringify(history.slice(-10))}
+
         USUARIO: "${userMessage}"
         
         INSTRUCCIONES:
-        - Responde de forma breve, profesional y útil.
+        - Responde de forma breve, profesional y útil. No repitas siempre lo mismo.
         - Usa los datos de la finca si el usuario pregunta por cultivos específicos o clima.
+        - Mantén el hilo de la conversación usando el HISTORIAL.
         - Responde ÚNICAMENTE con JSON: {"answer": "Tu respuesta aquí"}`;
 
         const payload = {
@@ -233,6 +251,6 @@ export const askButler = async (userMessage, farmContext) => {
         return await callGemini(payload, apiKey);
     } catch (error) {
         console.warn("IA: Mayordomo en modo offline...");
-        return simulateAI({ contents: [{ parts: [{ text: "Eres el Mayordomo" }] }] });
+        return simulateAI({ contents: [{ parts: [{ text: `Eres el Mayordomo. USUARIO: "${userMessage}"` }] }] });
     }
 };
