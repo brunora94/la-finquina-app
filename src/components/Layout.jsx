@@ -5,6 +5,10 @@ import { FARM_CONFIG } from '../constants';
 
 const NavItem = ({ icon: Icon, label, active, onClick }) => {
     if (!Icon) return null;
+
+    // Check if Icon is a component (function or ForwardRef object)
+    const isComponent = typeof Icon === 'function' || (typeof Icon === 'object' && Icon.$$typeof);
+
     return (
         <button
             onClick={onClick}
@@ -15,7 +19,7 @@ const NavItem = ({ icon: Icon, label, active, onClick }) => {
                     : "text-earth-400 hover:text-nature-500"
             )}
         >
-            {typeof Icon === 'function' ? (
+            {isComponent ? (
                 <Icon size={24} strokeWidth={active ? 2.5 : 2} />
             ) : (
                 Icon
