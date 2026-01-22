@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import WeatherWidget from '../components/WeatherWidget';
 import MoonWidget from '../components/MoonWidget';
 import RainWidget from '../components/RainWidget';
+import PredictiveCalendar from '../components/PredictiveCalendar';
 import { ClipboardList, Sprout, TrendingUp } from 'lucide-react';
 import { useEffect } from 'react';
 
@@ -16,29 +17,21 @@ const Dashboard = ({ onNavigate }) => {
     return (
         <div className="space-y-6">
             {/* Top Stats Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <WeatherWidget />
                 </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.1 }}
-                >
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
                     <RainWidget />
                 </motion.div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                >
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
                     <MoonWidget />
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+                    <PredictiveCalendar />
                 </motion.div>
             </div>
 

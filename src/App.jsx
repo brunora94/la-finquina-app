@@ -6,6 +6,8 @@ import Crops from './pages/Crops';
 import Inventory from './pages/Inventory';
 import Harvests from './pages/Harvests';
 import ClimateRadar from './components/ClimateRadar';
+import ButlerChat from './components/ButlerChat';
+import Machinery from './pages/Machinery';
 
 function App() {
     const [currentPage, setCurrentPage] = useState('dashboard');
@@ -18,14 +20,18 @@ function App() {
             case 'inventory': return <Inventory />;
             case 'harvests': return <Harvests />;
             case 'radar': return <ClimateRadar onBack={() => setCurrentPage('dashboard')} />;
+            case 'machinery': return <Machinery />;
             default: return <Dashboard onNavigate={setCurrentPage} />;
         }
     };
 
     return (
-        <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
-            {renderPage()}
-        </Layout>
+        <>
+            <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+                {renderPage()}
+            </Layout>
+            <ButlerChat />
+        </>
     );
 }
 

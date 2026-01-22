@@ -111,6 +111,12 @@ const simulateAI = (payload) => {
         };
     }
 
+    if (text.includes("Eres el Mayordomo")) {
+        return {
+            answer: "Basado en tu finca, te recomiendo vigilar la humedad de la Fila 1. El clima detecta calor mañana y tus tomates están en semana 3 de crecimiento. ¿Quieres que añada un riego a las tareas?"
+        };
+    }
+
     return {
         friendships: ["Tomate con Albahaca", "Lechuga con Zanahoria"],
         warnings: ["Evita poner Ajos cerca de Legumbres"],
@@ -200,5 +206,33 @@ export const identifySpecies = async (imageBuffer) => {
     } catch (error) {
         console.error("IA: Fallo en identificación, activando simulador v6:", error.message);
         return simulateAI({ contents: [{ parts: [{ text: "Identifica la especie" }] }] });
+    }
+};
+export const askButler = async (userMessage, farmContext) => {
+    try {
+        const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+        if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
+
+        const prompt = `Eres el Mayordomo IA de La Finquina, un experto agricultor digital.
+        CONTEXTO DE LA FINCA:
+        ${JSON.stringify(farmContext)}
+        
+        USUARIO: "${userMessage}"
+        
+        INSTRUCCIONES:
+        - Responde de forma breve, profesional y útil.
+        - Usa los datos de la finca si el usuario pregunta por cultivos específicos o clima.
+        - Responde ÚNICAMENTE con JSON: {"answer": "Tu respuesta aquí"}`;
+
+        const payload = {
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
+        };
+
+        return await callGemini(payload, apiKey);
+    } catch (error) {
+        console.warn("IA: Mayordomo en modo offline...");
+        return simulateAI({ contents: [{ parts: [{ text: "Eres el Mayordomo" }] }] });
     }
 };
