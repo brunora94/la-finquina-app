@@ -5,6 +5,13 @@ import { askButler } from '../lib/gemini';
 import { supabase } from '../lib/supabase';
 import clsx from 'clsx';
 
+const SUGGESTED_PROMPTS = [
+    "¿Cuándo es mi próxima cosecha?",
+    "¿Qué tareas tengo para hoy?",
+    "¿Cómo está el Taller?",
+    "Dime un consejo para el huerto"
+];
+
 const ButlerChat = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
@@ -20,26 +27,30 @@ const ButlerChat = () => {
         }
     }, [chat, isOpen]);
 
-    const handleSend = async () => {
-        if (!message.trim() || loading) return;
+    const handleSend = async (forcedText = null) => {
+        const textToSend = forcedText || message;
+        if (!textToSend.trim() || loading) return;
 
-        const userMsg = message;
         setMessage('');
-        setChat(prev => [...prev, { role: 'user', text: userMsg }]);
+        setChat(prev => [...prev, { role: 'user', text: textToSend }]);
         setLoading(true);
 
         try {
             // Fetch context for the Butler
             const { data: crops } = await supabase.from('crops').select('*');
-            const { data: tasks } = await supabase.from('tasks').select('*').eq('status', 'pending');
+            const { data: tasks } = await supabase.from('tasks').select('*').eq('completed', false);
 
             const context = {
                 currentCrops: crops?.map(c => `${c.name} (${c.variety}) en Fila ${c.row_number}`),
-                pendingTasks: tasks?.map(t => t.title),
+                pendingTasks: tasks?.map(t => t.text),
                 date: new Date().toLocaleDateString()
             };
 
-            const response = await askButler(userMsg, context, chat);
+            const response = await askButler(textToSend, context, chat);
+
+            // Add a small artificial delay to show the "typing" indicator for a better chat feel
+            await new Promise(resolve => setTimeout(resolve, 800));
+
             setChat(prev => [...prev, { role: 'assistant', text: response.answer }]);
         } catch (error) {
             setChat(prev => [...prev, { role: 'assistant', text: 'Lo siento, he tenido un pequeño lapsus. ¿Puedes repetir?' }]);
@@ -76,7 +87,7 @@ const ButlerChat = () => {
                         className="fixed bottom-6 right-6 z-[70] w-[90vw] max-w-[400px] h-[600px] bg-white rounded-[3rem] shadow-2xl border border-nature-100 flex flex-col overflow-hidden"
                     >
                         {/* Header */}
-                        <div className="bg-nature-900 p-6 text-white flex justify-between items-center">
+                        <div className="bg-nature-900 p-6 text-white flex justify-between items-center shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
                                     <Bot size={24} />
@@ -92,7 +103,7 @@ const ButlerChat = () => {
                         </div>
 
                         {/* Messages Area */}
-                        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-nature-50/30">
+                        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-nature-50/50">
                             {chat.map((msg, idx) => (
                                 <motion.div
                                     key={idx}
@@ -109,7 +120,7 @@ const ButlerChat = () => {
                                 </motion.div>
                             ))}
                             {loading && (
-                                <div className="mr-auto bg-white p-4 rounded-3xl border border-nature-100 flex gap-2">
+                                <div className="mr-auto bg-white p-4 rounded-3xl border border-nature-100 flex gap-2 w-16">
                                     <span className="w-2 h-2 bg-nature-200 rounded-full animate-bounce [animation-delay:-0.3s]" />
                                     <span className="w-2 h-2 bg-nature-200 rounded-full animate-bounce [animation-delay:-0.15s]" />
                                     <span className="w-2 h-2 bg-nature-200 rounded-full animate-bounce" />
@@ -117,8 +128,23 @@ const ButlerChat = () => {
                             )}
                         </div>
 
+                        {/* Suggested Prompts */}
+                        {chat.length === 1 && !loading && (
+                            <div className="px-6 py-4 flex gap-2 overflow-x-auto no-scrollbar shrink-0 bg-white">
+                                {SUGGESTED_PROMPTS.map((prompt, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => handleSend(prompt)}
+                                        className="whitespace-nowrap px-4 py-2 bg-nature-50 text-nature-700 text-[10px] font-bold rounded-full border border-nature-100 hover:bg-nature-900 hover:text-white transition-all shadow-sm"
+                                    >
+                                        {prompt}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Input Area */}
-                        <div className="p-4 bg-white border-t border-nature-50">
+                        <div className="p-4 bg-white border-t border-nature-50 shrink-0 mb-safe">
                             <div className="flex items-center gap-2 bg-nature-50 rounded-2xl p-2 pr-4 border border-nature-100 focus-within:border-nature-900 transition-all">
                                 <input
                                     type="text"
@@ -129,7 +155,7 @@ const ButlerChat = () => {
                                     className="flex-1 bg-transparent border-none outline-none p-2 text-sm font-bold text-nature-900"
                                 />
                                 <button
-                                    onClick={handleSend}
+                                    onClick={() => handleSend()}
                                     disabled={!message.trim() || loading}
                                     className="p-2 bg-nature-900 text-white rounded-xl active:scale-90 transition-transform disabled:opacity-50"
                                 >

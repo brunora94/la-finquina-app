@@ -112,18 +112,34 @@ const simulateAI = (payload) => {
     }
 
     if (text.includes("Eres el Mayordomo")) {
-        const lastUserMessage = text.split('USUARIO: "')[1]?.split('"')[0] || "";
+        const lastUserMessage = (text.split('USUARIO: "')[1]?.split('"')[0] || "").toLowerCase();
 
-        let dynamicAnswer = "Basado en tu finca, te recomiendo vigilar la humedad. ¿En qué más puedo ayudarte?";
+        const genericPhrases = [
+            "Es una excelente pregunta. Estoy analizando los datos históricos de tu finca para darte la mejor respuesta.",
+            "¡Buena observación! Según mis registros biológicos, eso es algo a tener en cuenta este mes.",
+            "Me gusta tu enfoque. Déjame revisar el historial de la Finca para confirmarlo.",
+            "¡Entendido! Siempre estoy aquí para ayudarte a optimizar la producción."
+        ];
 
-        if (lastUserMessage.toLowerCase().includes("hola")) {
-            dynamicAnswer = "¡Hola! Soy el Mayordomo de La Finquina. Todo parece estar en orden hoy. ¿Tienes alguna pregunta sobre tus cultivos?";
-        } else if (lastUserMessage.toLowerCase().includes("cosecha") || lastUserMessage.toLowerCase().includes("cuándo")) {
-            dynamicAnswer = "He revisado tus cultivos. Tus tomates están casi listos, calculo que en unos 10 días podrás empezar la cosecha. ¿Quieres que prepare un recordatorio?";
-        } else if (lastUserMessage.toLowerCase().includes("tarea") || lastUserMessage.toLowerCase().includes("hacer")) {
-            dynamicAnswer = "Tienes un par de tareas pendientes, principalmente el riego de la Fila 2. El clima dice que no lloverá en 48 horas, así que es buen momento.";
-        } else if (lastUserMessage.toLowerCase().includes("taller") || lastUserMessage.toLowerCase().includes("tractor")) {
-            dynamicAnswer = "He comprobado el estado del tractor en el Taller. Le toca revisión en 20 horas de uso. ¿Quieres ver los detalles?";
+        let dynamicAnswer = genericPhrases[Math.floor(Math.random() * genericPhrases.length)];
+
+        if (lastUserMessage.includes("hola") || lastUserMessage.includes("buenos")) {
+            const hellos = [
+                "¡Hola! Qué alegría saludarte. Todo parece marchar bien en La Finquina hoy.",
+                "¡Muy buenas! Aquí estoy listo para ayudarte con lo que necesites en el huerto.",
+                "¡Hola! El campo amanece tranquilo hoy. ¿En qué puedo asistirte?"
+            ];
+            dynamicAnswer = hellos[Math.floor(Math.random() * hellos.length)];
+        } else if (lastUserMessage.includes("cosecha") || lastUserMessage.includes("cuándo") || lastUserMessage.includes("recolectar")) {
+            dynamicAnswer = "He estado revisando el desarrollo de tus cultivos. Basado en la fecha de plantación, tus Tomates entrarán en fase de maduración pronto. ¡Mantén un ojo en el color!";
+        } else if (lastUserMessage.includes("tarea") || lastUserMessage.includes("hacer") || lastUserMessage.includes("pendiente")) {
+            dynamicAnswer = "Tienes un par de cosas en la lista. Principalmente el riego de la Fila 2 y revisar el stock de herramientas. ¿Quieres que te ayude a organizar el orden de prioridad?";
+        } else if (lastUserMessage.includes("taller") || lastUserMessage.includes("tractor") || lastUserMessage.includes("maquinaria")) {
+            dynamicAnswer = "El tractor está al 85% de su ciclo antes del próximo mantenimiento. Te recomiendo echarle un vistazo al taller este fin de semana para evitar sorpresas.";
+        } else if (lastUserMessage.includes("gracias") || lastUserMessage.includes("adiós")) {
+            dynamicAnswer = "¡De nada! Es un placer ayudarte. Aquí estaré 24/7 para que La Finquina siga siendo la mejor. ¡Hasta pronto!";
+        } else if (lastUserMessage.length > 5) {
+            dynamicAnswer = `Sobre lo que comentas de "${lastUserMessage.substring(0, 20)}...", me parece muy interesante. Aunque ahora estoy en modo offline, te sugiero vigilar los niveles de salud del suelo, suele ser clave en estos casos.`;
         }
 
         return {
