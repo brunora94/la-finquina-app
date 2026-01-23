@@ -88,36 +88,26 @@ const callGemini = async (payload, apiKey) => {
 const simulateAI = (payload) => {
     const text = JSON.stringify(payload);
 
-    // Plant Evaluation simulation
+    // Plant Evaluation simulation - EXTENSIVE REPORT
     if (text.includes("Analiza esta planta")) {
         const dateMatch = text.match(/plantó el: ([\d-]+)/);
         const nameMatch = text.match(/planta de ([\wáéíóú\s]+)/i);
         const cropName = nameMatch ? nameMatch[1].trim() : "cultivo";
         const plantedDate = dateMatch ? new Date(dateMatch[1]) : new Date();
-
         const daysPassed = Math.floor((new Date() - plantedDate) / (1000 * 60 * 60 * 24));
-        const healthStates = [
-            {
-                status: "Éxito",
-                diagnosis: `El ${cropName} muestra un vigor excepcional para llevar ${daysPassed} días en tierra. El sistema radicular parece estar expandiéndose bien y el color de las hojas indica una nutrición nitrogenada óptima.`,
-                action: "Mantener Riego",
-                daysBoost: 40
-            },
-            {
-                status: "Atención",
-                diagnosis: `Tras analizar la imagen del ${cropName}, detecto un ligero estrés en las puntas de las hojas. Podría ser una fluctuación de temperatura nocturna o falta de micronutrientes.`,
-                action: "Abonado Orgánico",
-                daysBoost: 45
-            }
-        ];
 
-        const state = healthStates[Math.floor(Math.random() * healthStates.length)];
-        const harvestDate = new Date(plantedDate.getTime() + state.daysBoost * 24 * 60 * 60 * 1000);
+        const diagnosis = `ACTA TÉCNICA DE SALUD VEGETAL - ${cropName.toUpperCase()}\n\n` +
+            `ESTADO BIOLÓGICO: La planta se encuentra en una fase avanzada de desarrollo vegetativo (${daysPassed} días). Se observa una estructura foliar robusta con entrenudos equilibrados, lo que sugiere una exposición lumínica adecuada.\n\n` +
+            `ANÁLISIS DE NUTRIENTES: Existe una ligera clorosis en las hojas más antiguas, síntoma clásico de una translocación de nitrógeno. Se recomienda un aporte equilibrado de N-P-K para evitar la senescencia prematura.\n\n` +
+            `HIDRATACIÓN: El turgor celular es óptimo en los brotes apicales, aunque la base muestra signos de compactación del sustrato. Se sugiere un aireado superficial (escarificado) para mejorar la infiltración.\n\n` +
+            `PREVISIÓN: Si se mantiene la curva actual de crecimiento, la fase de floración comenzará en aproximadamente 15-20 días.`;
 
         return {
-            ...state,
-            estimatedDaysToHarvest: state.daysBoost,
-            estimatedHarvestDate: harvestDate.toISOString().split('T')[0],
+            status: "Éxito",
+            diagnosis,
+            action: "Potenciar Nutrición",
+            estimatedDaysToHarvest: 35,
+            estimatedHarvestDate: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             isSimulation: true
         };
     }
@@ -159,11 +149,11 @@ const simulateAI = (payload) => {
     // Pest Analysis
     if (text.includes("Analiza esta plaga")) {
         return {
-            pest: "Oídio (Hongo)",
-            severity: "Media",
-            diagnosis: "Ese polvo blanco en las hojas es oídio. Suele aparecer por exceso de humedad o falta de ventilación.",
-            organicSolution: "Mezcla leche desnatada (1 parte) con agua (9 partes) y pulveriza cada 2 días al sol.",
-            preventiveTip: "Poda las hojas más bajas para que el aire circule mejor entre las filas.",
+            pest: "Araña Roja (Tetranychus urticae)",
+            severity: "Alta",
+            diagnosis: "Detección crítica de micro-telarañas en el envés. La severidad es alta debido a las altas temperaturas registradas que favorecen su reproducción exponencial. Se observa punteado clorótico difuso.",
+            organicSolution: "1. Aumenta la humedad ambiental (pulverizaciones con agua). 2. Aplica Jabón Potásico al 2% con Aceite de Neem (5ml/L) cada 3 días, al atardecer. 3. Introduce depredadores naturales como Phytoseiulus persimilis si el área es extensa.",
+            preventiveTip: "Evita el exceso de abonos nitrogenados que atraen a esta plaga y mantén las zonas colindantes libres de malas hierbas.",
             isSimulation: true
         };
     }
@@ -183,14 +173,19 @@ export const analyzeCropPhoto = async (imageBuffer, cropInfo) => {
         if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
 
         const base64Data = imageBuffer.split(",")[1];
-        const prompt = `Analiza esta planta de ${cropInfo.name}. 
-        DATOS CLAVE:
-        - Se plantó el: ${cropInfo.plantedDate || 'fecha desconocida'}
-        - Cantidad: ${cropInfo.quantity || 1}
+        const prompt = `Actúa como un Agrónomo Senior de Élite. Analiza esta planta de ${cropInfo.name}. 
+        DATOS CLAVE: Plantada el ${cropInfo.plantedDate || 'desconocido'}.
         
-        TAREA:
-        Estima la fecha de cosecha basándote en la fecha de plantación y lo que ves en la foto.
-        Responde ÚNICAMENTE con JSON: {"status": "Éxito/Advertencia", "diagnosis": "Salud detallada", "action": "Acción recomendada", "estimatedDaysToHarvest": 10, "estimatedHarvestDate": "YYYY-MM-DD"}`;
+        TAREA: Genera un INFORME TÉCNICO EXTENSO (min 150 palabras). 
+        Analiza: Estado biológico, Nutrientes, Hidratación, Riesgos y Futuro del cultivo.
+        
+        Responde ÚNICAMENTE con JSON: {
+            "status": "Éxito/Advertencia/Crítico", 
+            "diagnosis": "Informe agronómico detallado y profesional usando terminología técnica", 
+            "action": "Acción inmediata", 
+            "estimatedDaysToHarvest": 10, 
+            "estimatedHarvestDate": "YYYY-MM-DD"
+        }`;
 
         const payload = {
             contents: [{

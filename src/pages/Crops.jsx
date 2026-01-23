@@ -645,7 +645,7 @@ const Crops = () => {
                                                                 </span>
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-indigo-900 leading-relaxed font-medium">{crop.aiAnalysis.diagnosis}</p>
+                                                        <p className="text-xs text-indigo-900 leading-relaxed font-medium whitespace-pre-wrap">{crop.aiAnalysis.diagnosis}</p>
                                                         <div className="mt-3 pt-3 border-t border-indigo-100 flex justify-between items-center">
                                                             <span className="text-[9px] font-bold text-indigo-400">{crop.aiAnalysis.timestamp}</span>
                                                             <span className="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold uppercase">{crop.aiAnalysis.action}</span>
