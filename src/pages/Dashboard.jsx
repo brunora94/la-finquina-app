@@ -97,6 +97,19 @@ const Dashboard = ({ onNavigate }) => {
                         <span className="text-indigo-400 text-sm">Tablón Comunitario</span>
                     </div>
                 </button>
+
+                <button
+                    onClick={() => onNavigate('water-control')}
+                    className="bg-blue-50 p-6 rounded-3xl shadow-sm border border-blue-100 flex items-center gap-5 hover:shadow-xl hover:-translate-y-1 transition-all active:scale-95 text-left group"
+                >
+                    <div className="p-4 bg-blue-100 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <Droplets size={32} />
+                    </div>
+                    <div>
+                        <span className="block font-bold text-blue-900 text-xl font-outfit">Hidro-Control</span>
+                        <span className="text-blue-400 text-sm">Gestión de Agua y Riego</span>
+                    </div>
+                </button>
             </motion.div>
         </div>
     );

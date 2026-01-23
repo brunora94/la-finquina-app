@@ -136,6 +136,8 @@ const simulateAI = (payload) => {
             dynamicAnswer = "Tienes un par de cosas en la lista. Principalmente el riego de la Fila 2 y revisar el stock de herramientas. ¿Quieres que te ayude a organizar el orden de prioridad?";
         } else if (lastUserMessage.includes("taller") || lastUserMessage.includes("tractor") || lastUserMessage.includes("maquinaria")) {
             dynamicAnswer = "El tractor está al 85% de su ciclo antes del próximo mantenimiento. Te recomiendo echarle un vistazo al taller este fin de semana para evitar sorpresas.";
+        } else if (lastUserMessage.includes("agua") || lastUserMessage.includes("riego") || lastUserMessage.includes("depósito")) {
+            dynamicAnswer = "He analizado tus reservas. Si el depósito baja del 20%, te avisaré de inmediato. Por ahora, prioriza el riego de los frutales, que son los que más litros demandan con este sol.";
         } else if (lastUserMessage.includes("gracias") || lastUserMessage.includes("adiós")) {
             dynamicAnswer = "¡De nada! Es un placer ayudarte. Aquí estaré 24/7 para que La Finquina siga siendo la mejor. ¡Hasta pronto!";
         } else if (lastUserMessage.length > 5) {

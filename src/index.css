@@ -24,3 +24,20 @@ body {
     @apply bg-nature-600 hover:bg-nature-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-95;
   }
 }
+
+@keyframes wave {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.animate-wave-slow {
+    width: 200%;
+    background-image: linear-gradient(to right, transparent, rgba(255,255,255,0.3) 50%, transparent);
+    animation: wave 5s linear infinite;
+}
+
+.animate-wave-fast {
+    width: 200%;
+    background-image: linear-gradient(to right, transparent, rgba(255,255,255,0.2) 50%, transparent);
+    animation: wave 3s linear infinite;
+}

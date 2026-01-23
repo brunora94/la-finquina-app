@@ -10,6 +10,7 @@ import ButlerChat from './components/ButlerChat';
 import Machinery from './pages/Machinery';
 import PestRadar from './pages/PestRadar';
 import Marketplace from './pages/Marketplace';
+import WaterControl from './pages/WaterControl';
 
 function App() {
     const [currentPage, setCurrentPage] = useState('dashboard');
@@ -25,6 +26,7 @@ function App() {
             case 'machinery': return <Machinery />;
             case 'pest-radar': return <PestRadar onBack={() => setCurrentPage('dashboard')} />;
             case 'marketplace': return <Marketplace onBack={() => setCurrentPage('dashboard')} />;
+            case 'water-control': return <WaterControl onBack={() => setCurrentPage('dashboard')} />;
             default: return <Dashboard onNavigate={setCurrentPage} />;
         }
     };
