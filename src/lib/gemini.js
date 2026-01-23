@@ -147,6 +147,16 @@ const simulateAI = (payload) => {
         };
     }
 
+    if (text.includes("Analiza esta plaga")) {
+        return {
+            pest: "Pulgón Verde",
+            severity: "Media",
+            diagnosis: "Se observa una colonia de pulgones en el envés de las hojas jóvenes, causando enrollamiento y melaza.",
+            organicSolution: "Aplica una mezcla de agua con jabón potásico (2%) o aceite de Neem cada 3 días al atardecer.",
+            preventiveTip: "Planta caléndulas o albahaca cerca para atraer depredadores naturales como las mariquitas."
+        };
+    }
+
     return {
         friendships: ["Tomate con Albahaca", "Lechuga con Zanahoria"],
         warnings: ["Evita poner Ajos cerca de Legumbres"],
@@ -266,7 +276,37 @@ export const askButler = async (userMessage, farmContext, history = []) => {
 
         return await callGemini(payload, apiKey);
     } catch (error) {
-        console.warn("IA: Mayordomo en modo offline...");
         return simulateAI({ contents: [{ parts: [{ text: `Eres el Mayordomo. USUARIO: "${userMessage}"` }] }] });
+    }
+};
+
+export const diagnosePest = async (imageBuffer) => {
+    try {
+        const apiKey = (import.meta.env.VITE_GEMINI_API_KEY || "").trim();
+        if (!apiKey || apiKey === 'tu_llave_de_google_gemini') throw new Error("API_KEY_MISSING");
+
+        const base64Data = imageBuffer.split(",")[1];
+        const prompt = `Analiza esta imagen de una planta que parece tener una plaga o enfermedad.
+        Responde ÚNICAMENTE con JSON: {
+            "pest": "Nombre de la plaga o enfermedad",
+            "severity": "Baja/Media/Alta",
+            "diagnosis": "Descripción detallada de lo que ves",
+            "organicSolution": "Tratamiento ecológico paso a paso",
+            "preventiveTip": "Consejo para que no vuelva a pasar"
+        }`;
+
+        const payload = {
+            contents: [{
+                parts: [
+                    { text: prompt },
+                    { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                ]
+            }]
+        };
+
+        return await callGemini(payload, apiKey);
+    } catch (error) {
+        console.error("IA: Fallo en diagnóstico de plagas, simulando...", error.message);
+        return simulateAI({ contents: [{ parts: [{ text: "Analiza esta plaga" }] }] });
     }
 };

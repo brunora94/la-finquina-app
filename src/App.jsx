@@ -8,6 +8,8 @@ import Harvests from './pages/Harvests';
 import ClimateRadar from './components/ClimateRadar';
 import ButlerChat from './components/ButlerChat';
 import Machinery from './pages/Machinery';
+import PestRadar from './pages/PestRadar';
+import Marketplace from './pages/Marketplace';
 
 function App() {
     const [currentPage, setCurrentPage] = useState('dashboard');
@@ -21,6 +23,8 @@ function App() {
             case 'harvests': return <Harvests />;
             case 'radar': return <ClimateRadar onBack={() => setCurrentPage('dashboard')} />;
             case 'machinery': return <Machinery />;
+            case 'pest-radar': return <PestRadar onBack={() => setCurrentPage('dashboard')} />;
+            case 'marketplace': return <Marketplace onBack={() => setCurrentPage('dashboard')} />;
             default: return <Dashboard onNavigate={setCurrentPage} />;
         }
     };

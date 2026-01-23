@@ -14,12 +14,42 @@ const SUGGESTED_PROMPTS = [
 
 const ButlerChat = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
     const [message, setMessage] = useState('');
     const [chat, setChat] = useState([
         { role: 'assistant', text: '¡Hola! Soy el Mayordomo de La Finquina. ¿En qué puedo ayudarte hoy?' }
     ]);
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef(null);
+    const recognitionRef = useRef(null);
+    const [isListening, setIsListening] = useState(false);
+
+    const speak = (text) => {
+        if (!isVoiceEnabled) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-ES';
+        utterance.rate = 1.1;
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const startListening = () => {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'es-ES';
+        recognition.interimResults = false;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            handleSend(text);
+        };
+
+        recognition.start();
+    };
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -52,6 +82,7 @@ const ButlerChat = () => {
             await new Promise(resolve => setTimeout(resolve, 800));
 
             setChat(prev => [...prev, { role: 'assistant', text: response.answer }]);
+            speak(response.answer);
         } catch (error) {
             setChat(prev => [...prev, { role: 'assistant', text: 'Lo siento, he tenido un pequeño lapsus. ¿Puedes repetir?' }]);
         } finally {
@@ -97,9 +128,20 @@ const ButlerChat = () => {
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-nature-300">Experto Agrícola</span>
                                 </div>
                             </div>
-                            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-                                <ChevronDown size={24} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setIsVoiceEnabled(!isVoiceEnabled)}
+                                    className={clsx(
+                                        "p-2 rounded-xl transition-all",
+                                        isVoiceEnabled ? "bg-white text-nature-900 shadow-lg" : "hover:bg-white/10 text-white/50"
+                                    )}
+                                >
+                                    <Mic size={20} />
+                                </button>
+                                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                                    <ChevronDown size={24} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Messages Area */}
@@ -151,9 +193,23 @@ const ButlerChat = () => {
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                                    placeholder="Pregúntame algo..."
-                                    className="flex-1 bg-transparent border-none outline-none p-2 text-sm font-bold text-nature-900"
+                                    placeholder={isListening ? "Escuchando..." : "Pregúntame algo..."}
+                                    className={clsx(
+                                        "flex-1 bg-transparent border-none outline-none p-2 text-sm font-bold",
+                                        isListening ? "text-nature-500 animate-pulse" : "text-nature-900"
+                                    )}
                                 />
+                                {isVoiceEnabled && (
+                                    <button
+                                        onClick={startListening}
+                                        className={clsx(
+                                            "p-2 rounded-xl transition-all mr-1",
+                                            isListening ? "bg-red-500 text-white animate-bounce" : "bg-nature-100 text-nature-600 hover:bg-nature-200"
+                                        )}
+                                    >
+                                        <Mic size={18} />
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => handleSend()}
                                     disabled={!message.trim() || loading}
