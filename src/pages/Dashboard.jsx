@@ -5,7 +5,7 @@ import MoonWidget from '../components/MoonWidget';
 import RainWidget from '../components/RainWidget';
 import PredictiveCalendar from '../components/PredictiveCalendar';
 import NotificationsCenter from '../components/NotificationsCenter';
-import { ClipboardList, Sprout, TrendingUp, Bug, ShoppingBag } from 'lucide-react';
+import { ClipboardList, Sprout, TrendingUp, Bug, ShoppingBag, Droplets } from 'lucide-react';
 import { useEffect } from 'react';
 
 const Dashboard = ({ onNavigate }) => {
