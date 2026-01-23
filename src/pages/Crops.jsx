@@ -240,7 +240,8 @@ const Crops = () => {
                             diagnosis: analysis.diagnosis,
                             action: analysis.action,
                             timestamp: new Date().toLocaleString(),
-                            estimatedHarvest: analysis.estimatedHarvestDate
+                            estimatedHarvest: analysis.estimatedHarvestDate,
+                            isSimulation: analysis.isSimulation
                         }
                     };
                     return updatedCrop;
@@ -639,7 +640,9 @@ const Crops = () => {
                                                             </div>
                                                             <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center justify-between grow">
                                                                 <span>Diagnóstico de Élite</span>
-                                                                <span className="text-[7px] text-indigo-400">v6.0</span>
+                                                                <span className="text-[7px] text-indigo-400">
+                                                                    {crop.aiAnalysis.isSimulation ? 'MODO OFFLINE' : 'v6.0'}
+                                                                </span>
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-indigo-900 leading-relaxed font-medium">{crop.aiAnalysis.diagnosis}</p>

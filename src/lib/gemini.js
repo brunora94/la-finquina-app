@@ -87,82 +87,92 @@ const callGemini = async (payload, apiKey) => {
  */
 const simulateAI = (payload) => {
     const text = JSON.stringify(payload);
+
+    // Plant Evaluation simulation
     if (text.includes("Analiza esta planta")) {
-        // Extraemos la fecha de plantación del prompt para una simulación realista
         const dateMatch = text.match(/plantó el: ([\d-]+)/);
+        const nameMatch = text.match(/planta de ([\wáéíóú\s]+)/i);
+        const cropName = nameMatch ? nameMatch[1].trim() : "cultivo";
         const plantedDate = dateMatch ? new Date(dateMatch[1]) : new Date();
-        const daysToHarvest = 45; // Ciclo medio simulación
-        const harvestDate = new Date(plantedDate.getTime() + daysToHarvest * 24 * 60 * 60 * 1000);
+
+        const daysPassed = Math.floor((new Date() - plantedDate) / (1000 * 60 * 60 * 24));
+        const healthStates = [
+            {
+                status: "Éxito",
+                diagnosis: `El ${cropName} muestra un vigor excepcional para llevar ${daysPassed} días en tierra. El sistema radicular parece estar expandiéndose bien y el color de las hojas indica una nutrición nitrogenada óptima.`,
+                action: "Mantener Riego",
+                daysBoost: 40
+            },
+            {
+                status: "Atención",
+                diagnosis: `Tras analizar la imagen del ${cropName}, detecto un ligero estrés en las puntas de las hojas. Podría ser una fluctuación de temperatura nocturna o falta de micronutrientes.`,
+                action: "Abonado Orgánico",
+                daysBoost: 45
+            }
+        ];
+
+        const state = healthStates[Math.floor(Math.random() * healthStates.length)];
+        const harvestDate = new Date(plantedDate.getTime() + state.daysBoost * 24 * 60 * 60 * 1000);
 
         return {
-            status: "Éxito",
-            diagnosis: "La planta muestra un desarrollo óptimo y vigoroso para su tiempo de vida. El follaje está sano y no se observan signos de estrés hídrico ni plagas.",
-            action: "Mantenimiento",
-            estimatedDaysToHarvest: daysToHarvest,
-            estimatedHarvestDate: harvestDate.toISOString().split('T')[0]
+            ...state,
+            estimatedDaysToHarvest: state.daysBoost,
+            estimatedHarvestDate: harvestDate.toISOString().split('T')[0],
+            isSimulation: true
         };
     }
 
+    // Species identification
     if (text.includes("Identifica la especie")) {
         return {
-            name: "Tomate",
-            variety: "Raf",
-            confidence: 0.99
+            name: "Brocoli",
+            variety: "Calabrese",
+            confidence: 0.95,
+            isSimulation: true
         };
     }
 
+    // Butler Chat
     if (text.includes("Eres el Mayordomo")) {
         const lastUserMessage = (text.split('USUARIO: "')[1]?.split('"')[0] || "").toLowerCase();
 
-        const genericPhrases = [
-            "Es una excelente pregunta. Estoy analizando los datos históricos de tu finca para darte la mejor respuesta.",
-            "¡Buena observación! Según mis registros biológicos, eso es algo a tener en cuenta este mes.",
-            "Me gusta tu enfoque. Déjame revisar el historial de la Finca para confirmarlo.",
-            "¡Entendido! Siempre estoy aquí para ayudarte a optimizar la producción."
-        ];
+        const responses = {
+            "default": "He consultado los registros, pero mi conexión con el cerebro central es inestable ahora. Según lo último que anotamos, la finca está en niveles normales.",
+            "hola": "¡Muy buenas! Un placer hablar contigo. El campo está tranquilo hoy, ¿qué planes tienes?",
+            "cosecha": "Calculando... Basado en las fotos que subiste ayer, los tomates están a punto de caramelo. Yo diría que en 4 días podrías recoger los primeros.",
+            "agua": "El nivel del depósito me preocupa un poco si no llueve pronto. Estamos al 70%, pero con este sol bajará rápido.",
+            "maquinaria": "El mantenimiento del tractor se acerca. He anotado que revises el aceite este fin de semana.",
+            "gracias": "No hay de qué. Mi deber es que La Finquina prospere. ¡Que tengas un gran día!"
+        };
 
-        let dynamicAnswer = genericPhrases[Math.floor(Math.random() * genericPhrases.length)];
-
-        if (lastUserMessage.includes("hola") || lastUserMessage.includes("buenos")) {
-            const hellos = [
-                "¡Hola! Qué alegría saludarte. Todo parece marchar bien en La Finquina hoy.",
-                "¡Muy buenas! Aquí estoy listo para ayudarte con lo que necesites en el huerto.",
-                "¡Hola! El campo amanece tranquilo hoy. ¿En qué puedo asistirte?"
-            ];
-            dynamicAnswer = hellos[Math.floor(Math.random() * hellos.length)];
-        } else if (lastUserMessage.includes("cosecha") || lastUserMessage.includes("cuándo") || lastUserMessage.includes("recolectar")) {
-            dynamicAnswer = "He estado revisando el desarrollo de tus cultivos. Basado en la fecha de plantación, tus Tomates entrarán en fase de maduración pronto. ¡Mantén un ojo en el color!";
-        } else if (lastUserMessage.includes("tarea") || lastUserMessage.includes("hacer") || lastUserMessage.includes("pendiente")) {
-            dynamicAnswer = "Tienes un par de cosas en la lista. Principalmente el riego de la Fila 2 y revisar el stock de herramientas. ¿Quieres que te ayude a organizar el orden de prioridad?";
-        } else if (lastUserMessage.includes("taller") || lastUserMessage.includes("tractor") || lastUserMessage.includes("maquinaria")) {
-            dynamicAnswer = "El tractor está al 85% de su ciclo antes del próximo mantenimiento. Te recomiendo echarle un vistazo al taller este fin de semana para evitar sorpresas.";
-        } else if (lastUserMessage.includes("agua") || lastUserMessage.includes("riego") || lastUserMessage.includes("depósito")) {
-            dynamicAnswer = "He analizado tus reservas. Si el depósito baja del 20%, te avisaré de inmediato. Por ahora, prioriza el riego de los frutales, que son los que más litros demandan con este sol.";
-        } else if (lastUserMessage.includes("gracias") || lastUserMessage.includes("adiós")) {
-            dynamicAnswer = "¡De nada! Es un placer ayudarte. Aquí estaré 24/7 para que La Finquina siga siendo la mejor. ¡Hasta pronto!";
-        } else if (lastUserMessage.length > 5) {
-            dynamicAnswer = `Sobre lo que comentas de "${lastUserMessage.substring(0, 20)}...", me parece muy interesante. Aunque ahora estoy en modo offline, te sugiero vigilar los niveles de salud del suelo, suele ser clave en estos casos.`;
+        let answer = responses.default;
+        for (const [key, val] of Object.entries(responses)) {
+            if (lastUserMessage.includes(key)) {
+                answer = val;
+                break;
+            }
         }
 
-        return {
-            answer: dynamicAnswer
-        };
+        return { answer, isSimulation: true };
     }
 
+    // Pest Analysis
     if (text.includes("Analiza esta plaga")) {
         return {
-            pest: "Pulgón Verde",
+            pest: "Oídio (Hongo)",
             severity: "Media",
-            diagnosis: "Se observa una colonia de pulgones en el envés de las hojas jóvenes, causando enrollamiento y melaza.",
-            organicSolution: "Aplica una mezcla de agua con jabón potásico (2%) o aceite de Neem cada 3 días al atardecer.",
-            preventiveTip: "Planta caléndulas o albahaca cerca para atraer depredadores naturales como las mariquitas."
+            diagnosis: "Ese polvo blanco en las hojas es oídio. Suele aparecer por exceso de humedad o falta de ventilación.",
+            organicSolution: "Mezcla leche desnatada (1 parte) con agua (9 partes) y pulveriza cada 2 días al sol.",
+            preventiveTip: "Poda las hojas más bajas para que el aire circule mejor entre las filas.",
+            isSimulation: true
         };
     }
 
     return {
-        friendships: ["Tomate con Albahaca", "Lechuga con Zanahoria"],
-        warnings: ["Evita poner Ajos cerca de Legumbres"],
-        tips: ["Usa acolchado para mantener la humedad."]
+        friendships: ["Pimiento con Tomate", "Lechuga con Cebolla"],
+        warnings: ["Cuidado con el exceso de sol hoy"],
+        tips: ["Es buen momento para acolchar"],
+        isSimulation: true
     };
 };
 
