@@ -641,7 +641,7 @@ const Crops = () => {
                                                             <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center justify-between grow">
                                                                 <span>Diagnóstico de Élite</span>
                                                                 <span className="text-[7px] text-indigo-400">
-                                                                    {crop.aiAnalysis.isSimulation ? 'MODO OFFLINE' : 'v6.0'}
+                                                                    {crop.aiAnalysis.isSimulation ? 'v7.0 (Local Sync)' : 'v7.0 (Live Connect)'}
                                                                 </span>
                                                             </span>
                                                         </div>
